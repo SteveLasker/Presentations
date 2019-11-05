@@ -1,5 +1,5 @@
 # Leveraging Build Pipelines for Automating Container OS & Framework Patching
-	
+
 ## Abstract
 
 Containers have become the modern packaging format, regardless of the host they're run on. You may be building your own images, or consuming images from ISVs. While containers have a focused subset of their VM ancestors, containers still have layers of the OS, runtimes and other components that are susceptible to vulnerabilities that must be remediated. Have you considered how you'll patch these deployments? Will you patch the running containers, as you patch VMs, hoping the software continues to run, as you continually patch the same deployed image?
@@ -42,7 +42,7 @@ Animation
   - Pull/Push or a server side import? [acr import](https://aka.ms/acr/import)
 - How do you know these upstream changes meet your needs?
 
-## Visualation
+## Visualization
 
 ### Artifact Registries
 

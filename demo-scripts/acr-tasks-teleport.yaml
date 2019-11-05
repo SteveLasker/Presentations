@@ -1,0 +1,5 @@
+version: 1.0
+steps:
+  - cmd: "docker images"
+  - cmd: "docker rmi -f $(docker images -a -q)"
+  - cmd: "orca run {{.Run.Registry}}/mssql-scandb:2g echo hello"
