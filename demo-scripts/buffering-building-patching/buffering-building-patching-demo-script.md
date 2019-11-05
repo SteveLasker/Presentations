@@ -67,12 +67,12 @@ Isolated from the build system
 
 ## Local Developers (Inner Loop)
 
-
 ## Demo - Building with ACR Tasks
 
 Lets look at how ACR Tasks can build images, initiated from your local machine (inner loop) to git and base image triggers that can sync upstream changes.
 
 - remote build `az acr build ...`
+
 - Task build, triggered from git-commits
 - Change the FROM to a base-artifact registry
   - Show visualization - moving the FROM upstream to central base-artifacts registry
