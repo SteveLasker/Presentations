@@ -15,15 +15,18 @@
 ## Demo Setup
 
 ```sh
-ACR_NAME=demo42t
+export ACR_NAME=demo42t
+export UPSTREAM_ACR_NAME=demo42upstream
+az configure --defaults acr=${ACR_NAME}
 ```
 
 - Import base-image/node:9-alpine
 
   ```sh
-  az acr import -n ${ACR_NAME} --source docker.io/library/node:9-alpine -t base-artifacts/node:9-alpine
+  az acr import --source docker.io/library/node:9-alpine -t upstream/node:9-alpine
 
-  az acr import -n ${ACR_NAME} --source docker.io/library/node:9-alpine -t base-artifacts/node:9-alpine
+  az acr import --source docker.io/library/node:9-alpine -t base-artifacts/node:9-alpine
+  az acr import --source mcr.microsoft.com/azure-cli:2.0.75 -t base-artifacts/azure-cli:2.0.75
   ```
 
 - Connect ACR and AKS
@@ -46,6 +49,11 @@ az aks update \
       --resource-group ${AKS_RG_NAME}
   ```
 
+## Demo Reset
+
+- /helloworld/Dockerfile
+  Reset FROM to `FROM node:9-alpin`
+
 ## Inner Loop
 
 - Open `helloworld`
@@ -54,7 +62,6 @@ az aks update \
 
   ```sh
   az acr build \
-    --registry demo42t \
     -t demo42/helloworld:{{.Run.ID}} \
     .
   ```
@@ -63,7 +70,6 @@ az aks update \
 
   ```sh
   az acr repository show-tags \
-  --registry demo42t \
   --repository demo42/helloworld
   ```
 
@@ -72,7 +78,6 @@ az aks update \
 
   ```sh
   az acr repository show-tags \
-    -n ${ACR_NAME} \
     --repository demo42/helloworld \
     --orderby time_desc \
     --detail \
@@ -109,7 +114,6 @@ az aks update \
 
   ```sh
   az acr task create \
-    --registry $ACR_NAME \
     -n helloworld \
     -f acr-task.yaml \
     --context $GIT_REPO \
@@ -119,11 +123,13 @@ az aks update \
                   --query value -o tsv)
   ```
 
-- Manually run the task
+- Change `server.js`
+- Commit the change
+- Watch base image changes
 
-    ```sh
-    az acr task run --registry ${ACR_NAME} -n helloworld
-    ```
+  ```sh
+  watch -n1 az acr task list-runs
+  ```
 
 - Update AKS Deployment
   - Update `kube.yaml` to reflect the new image id (tag)
@@ -132,7 +138,18 @@ az aks update \
   kubectl apply -f kube.yaml
   ```
 
-- Automate Node Base Image
+## Automate Node Base Image
+
+- Move the helloworld base image reference to the `base-artifacts/` repo
+- Browse the portal, find the `base-artifacts/node:9-alpine` image, and copy from the portal
+- Commit the change, triggering a build
+
+  ```sh
+  watch -n1 az acr task list-runs
+  ```
+
+- Make a change to the node base image
+  - Chang the backcolor
 
   ```sh
   az acr task create \
