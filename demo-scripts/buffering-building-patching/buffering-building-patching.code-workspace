@@ -4,18 +4,14 @@
 			"path": "."
 		},
 		{
-			"path": "\\\\wsl$\\Ubuntu\\home\\stevelas\\github\\demo42\\node-upstream"
+			"path": "/home/stevelas/github/demo42/node-upstream"
 		},
 		{
-			"path": "\\\\wsl$\\Ubuntu\\home\\stevelas\\github\\demo42\\node-baseimage-import"
+			"path": "/home/stevelas/github/demo42/node-baseimage-import"
 		},
 		{
-			"path": "\\\\wsl$\\Ubuntu\\home\\stevelas\\github\\demo42\\helloworld"
+			"path": "/home/stevelas/github/demo42/helloworld"
 		}
 	],
-	"settings": {
-		"cSpell.words": [
-			"initated"
-		]
-	}
+	"settings": {}
 }

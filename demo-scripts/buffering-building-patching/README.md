@@ -410,21 +410,23 @@ To automate image building, we'll create a task, triggered by git commits
     --assignee-principal-type ServicePrincipal \
     --scope $(az acr show \
     -n ${ACR_NAME} \
-    --query id -o tsv)
+    --query id -o tsv) \
+    -o jsonc
   ```
 
   ```sh
   az role assignment create \
-  --role Contributor \
-  --assignee-object-id $(az acr task show \
-                          -n helloworld \
-                          --query identity.principalId \
-                          -o tsv) \
-  --assignee-principal-type ServicePrincipal \
-  --scope $(az aks show \
-  -n ${AKS_NAME} \
-  -g ${AKS_RG_NAME} \
-  --query id -o tsv)
+    --role Contributor \
+    --assignee-object-id $(az acr task show \
+                            -n helloworld \
+                            --query identity.principalId \
+                            -o tsv) \
+    --assignee-principal-type ServicePrincipal \
+    --scope $(az aks show \
+    -n ${AKS_NAME} \
+    -g ${AKS_RG_NAME} \
+    --query id -o tsv) \
+    -o jsonc
   ```
 
 ### Deploy a change to helloworld
@@ -464,7 +466,8 @@ We do require an identity for the task, as [az acr import](https://aka.ms/acr/im
     --git-access-token $(az keyvault secret show \
                           --vault-name ${AKV_NAME} \
                           --name ${GIT_TOKEN_NAME} \
-                          --query value -o tsv)
+                          --query value -o tsv) \
+    -o jsonc
   ```
 
 - Assign the identity of the task, access to the registry
@@ -479,7 +482,8 @@ We do require an identity for the task, as [az acr import](https://aka.ms/acr/im
     --assignee-principal-type ServicePrincipal \
     --scope $(az acr show \
       -n ${ACR_NAME} \
-      --query id -o tsv)
+      --query id -o tsv) \
+    -o jsonc
   ```
 
   > Note: `--role contributor` See [Issue #281: acr import fails with acrpush role](https://github.com/Azure/acr/issues/281)  
@@ -489,6 +493,22 @@ We do require an identity for the task, as [az acr import](https://aka.ms/acr/im
 
   ```sh
   az acr task run -n node-import-base-image
+  ```
+
+### Change the Base Image Reference
+
+- Open `helloworld/dockerfile`
+- Change the reference to:
+
+  ```sh
+  FROM demo42t.azurecr.io/base-artifacts/node:9-alpine
+  ```
+
+- Commit the change
+- Watch the automated build/deploy
+
+  ```sh
+  watch -n1 az acr task list-runs
   ```
 
 ### Test Base Image Notifications, w/Importing to Staging
