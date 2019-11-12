@@ -356,7 +356,8 @@ To automate image building, we'll create a task, triggered by git commits
     --git-access-token $(az keyvault secret show \
                           --vault-name $AKV_NAME \
                           --name $GIT_TOKEN_NAME \
-                          --query value -o tsv)
+                          --query value -o tsv) \
+    --query name
   ```
 
 - Change `server.js`
@@ -411,7 +412,7 @@ To automate image building, we'll create a task, triggered by git commits
     --scope $(az acr show \
     -n ${ACR_NAME} \
     --query id -o tsv) \
-    -o jsonc
+    --query name
   ```
 
   ```sh
@@ -426,7 +427,7 @@ To automate image building, we'll create a task, triggered by git commits
     -n ${AKS_NAME} \
     -g ${AKS_RG_NAME} \
     --query id -o tsv) \
-    -o jsonc
+    --query name
   ```
 
 ### Deploy a change to helloworld
@@ -467,7 +468,7 @@ We do require an identity for the task, as [az acr import](https://aka.ms/acr/im
                           --vault-name ${AKV_NAME} \
                           --name ${GIT_TOKEN_NAME} \
                           --query value -o tsv) \
-    -o jsonc
+    --query name
   ```
 
 - Assign the identity of the task, access to the registry
@@ -483,7 +484,7 @@ We do require an identity for the task, as [az acr import](https://aka.ms/acr/im
     --scope $(az acr show \
       -n ${ACR_NAME} \
       --query id -o tsv) \
-    -o jsonc
+    --query name
   ```
 
   > Note: `--role contributor` See [Issue #281: acr import fails with acrpush role](https://github.com/Azure/acr/issues/281)  
@@ -563,6 +564,17 @@ Now that we've successfully automated the importing of a base image to our stagi
   ```
 - Open `test.sh` to see a basic unit test, blocking red. 
 
+- Add a validation step to `acr-tasks.yaml`
+
+  ```yaml
+    - id: validate-base-image
+      # only continues if node-import:test returns a non-zero code
+      when: ['build-base-image-test']
+      cmd: $Registry/node-import:test
+
+  - id: import-node-to-base-artifacts
+    when: ['az-login', 'validate-base-image']
+  ```
 - Commit changes to run unit tests on the alpine image
 
 - Monitor Task execution
@@ -571,13 +583,13 @@ Now that we've successfully automated the importing of a base image to our stagi
   watch -n1 az acr task list-runs
   ```
 
-- Node Import fails
-
 - Stream the logs
 
   ```sh
   az acr task logs
   ```
+
+- Node Import fails
 
 - Change Background Color to trigger a base update
 
