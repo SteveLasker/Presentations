@@ -202,6 +202,16 @@ To simulate images on Docker Hub, which we can make direct changes to, we'll cre
     --resource-group ${AKS_RG_NAME}
   ```
 
+- Save KubeConfig
+
+  ```sh
+  az keyvault secret set \
+  --vault-name $AKV_NAME \
+  --name kube-config \
+  --value "$(cat ~/.kube/config)" \
+  --query name
+  
+  ```
 - Installing KubeCTL Client
 
   ```sh
@@ -229,6 +239,15 @@ To simulate images on Docker Hub, which we can make direct changes to, we'll cre
 
 ## Demo Reset
 
+- Reset `node-upstream/dockerfile`
+
+  ```dockerfile
+  FROM node:9-alpine
+  ENV NODE_VERSION 9.1-alpine
+  ENV BACKGROUND_COLOR white
+  #DeepSkyBlue
+  ```
+
 - Reset `helloworld/Dockerfile` to
 
   ```dockerfile
@@ -248,8 +267,48 @@ To simulate images on Docker Hub, which we can make direct changes to, we'll cre
 
   ```sh
   az acr task delete -n helloworld
-  az acr task delete -n node-import-to-staging
+  az acr task delete -n node-import-base-image
   ```
+
+- Reset `node-baseimage-import/acr-task.yaml`
+
+```yaml
+version: v1.1.0
+steps:
+  - id: build-base-image-test
+    # Build off the base image we'll track
+    # Add a test script to do unit test validations
+    when: [-]
+    build: >
+      -f ./Dockerfile
+      -t $Registry/node-import:test
+      .
+  - id: az-login
+    # login with the identity of the task
+    # run concurrently while the image is building: when: [-] indicates, wait for nothing
+    when: [-]
+    cmd: >
+      az login --identity > /dev/null
+
+
+
+  - id: import-node-to-base-artifacts
+    # Once login and image validation is/if complete, 
+    # import the public image to base-artifacts
+    # Note: we don't save the test validation image,
+    # but the logs captures any log validation issues
+    # We do override the stable tag, 
+    # but we also create a unique tag to enable rollback 
+    # to a previously working image
+    #when: ['az-login', 'validate-base-image']
+    cmd: >
+      az acr import 
+      --name $RegistryName 
+      --source $Registry/hub/node:9-alpine 
+      -t base-artifacts/node:9-alpine
+      -t base-artifacts/node:9-alpine-$ID
+      --force
+```
 
 - Uninstall helloworld AKS deployment
 
@@ -262,6 +321,7 @@ To simulate images on Docker Hub, which we can make direct changes to, we'll cre
   - Deployed [helloworld](http://104.214.72.98/)
   - [GitHub helloworld](https://github.com/demo42/helloworld/blob/master/server.js)
   - [GitHub node upstream dockerfile](https://github.com/demo42/node-upstream/blob/master/Dockerfile)
+  - [Demo Snippets](https://github.com/SteveLasker/Presentations/tree/master/demo-scripts/buffering-building-patching)
 
 - Open two Ubuntu Windows
   ```sh
@@ -396,7 +456,8 @@ To automate image building, we'll create a task, triggered by git commits
     --git-access-token $(az keyvault secret show \
                           --vault-name $AKV_NAME \
                           --name $GIT_TOKEN_NAME \
-                          --query value -o tsv)
+                          --query value -o tsv) \
+    --query name
   ```
 
 - Assign the identity of the task, access to the registry and aks cluster
@@ -636,6 +697,11 @@ time az acr import \
   -t base-artifacts/node:9-alpine-$ID \
   --force
 time az acr import --source demo42upstream.azurecr.io/library/node:9-alpine -t base-artifacts/node:9-alpine --force
+
+az acr repository update \
+      --name demo42t \ 
+      --image $Registry/demo42/helloworld:$ID \ 
+      --write-enabled false \
 ```
 
 [acr-import]:   https://aka.ms/acr/import
