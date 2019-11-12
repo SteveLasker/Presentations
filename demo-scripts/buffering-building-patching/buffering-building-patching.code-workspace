@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "\\\\wsl$\\Ubuntu\\home\\stevelas\\github\\demo42\\node-upstream"
+		},
+		{
+			"path": "\\\\wsl$\\Ubuntu\\home\\stevelas\\github\\demo42\\node-baseimage-import"
+		},
+		{
+			"path": "\\\\wsl$\\Ubuntu\\home\\stevelas\\github\\demo42\\helloworld"
+		}
+	],
+	"settings": {
+		"cSpell.words": [
+			"initated"
+		]
+	}
+}
