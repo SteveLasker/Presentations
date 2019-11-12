@@ -244,6 +244,13 @@ To simulate images on Docker Hub, which we can make direct changes to, we'll cre
   #CMD ./test.sh
   ```
 
+- Delete ACR Tasks
+
+  ```sh
+  az acr task delete -n helloworld
+  az acr task delete -n node-import-to-staging
+  ```
+
 - Uninstall helloworld AKS deployment
 
   ```sh
