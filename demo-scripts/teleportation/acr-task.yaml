@@ -3,4 +3,6 @@ steps:
   - id: docker-image-list
     cmd: orca images
   - id: orca-run
-    cmd: orca run demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 echo beam me up
+    cmd: >
+    orca run demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 
+    echo beam me up
