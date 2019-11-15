@@ -1,6 +1,6 @@
 version: v1.1.0
 steps:
   - id: docker-image-list
-    cmd: docker images
+    cmd: orca images
   - id: orca-run
     cmd: orca run demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 echo hello
