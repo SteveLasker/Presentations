@@ -453,6 +453,8 @@ To automate image building, we'll create a task, triggered by git commits
     -f acr-task.yaml \
     --context $GIT_HELLOWORLD \
     --assign-identity  \
+    --set Name="steve lasker" \
+    --set KUBE_CONFIG="$(cat ~/.kube/config)" \
     --git-access-token $(az keyvault secret show \
                           --vault-name $AKV_NAME \
                           --name $GIT_TOKEN_NAME \

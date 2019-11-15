@@ -4,5 +4,5 @@ steps:
     cmd: orca images
   - id: orca-run
     cmd: >
-    orca run demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 
-    echo -e '\e[32m beam me up\e[0m'
+      orca run demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 
+      echo -e '\e[32m beam me up \e[0m'
