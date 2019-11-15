@@ -5,4 +5,4 @@ steps:
   - id: orca-run
     cmd: >
     orca run demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 
-    echo beam me up
+    echo -e '\e[32m beam me up\e[0m'
