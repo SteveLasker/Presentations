@@ -12,6 +12,20 @@ export RESOURCE_GROUP=$ACR_NAME
 
 ## Setting up the Environment
 
+- Remote ssh into a VM within Azure
+
+- Clone the helloworld repo
+
+```sh
+git clone ${GIT_HELLOWORLD}
+```
+
+- Import Env Vars
+
+  ```sh
+  source ./env.sh
+  ```
+
 - Create a ACR. For preview, teleportation requires a premium registry.
 
 ```sh

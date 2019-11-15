@@ -70,9 +70,9 @@ time docker run --rm demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 echo 'he
 
 ### Orca
 
-- Combined w/task-yaml
+- View the Yaml - in VS Code
 
+- Teleport with Orca
   ```sh
-  cat acr-task.yaml
   az acr run -f acr-task.yaml /dev/null
   ```
