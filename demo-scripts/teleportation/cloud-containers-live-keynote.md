@@ -76,3 +76,32 @@ time docker run --rm demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 echo 'he
   ```sh
   az acr run -f acr-task.yaml /dev/null
   ```
+
+## Base Image Updates
+
+- Browse http://104.214.72.98/
+
+- Watch task changes
+
+```sh
+watch -n1 az acr task list-runs
+```
+- Make a base image chage
+
+  Edit: https://github.com/demo42/node-upstream/blob/master/Dockerfile
+
+- Back to watching tasks
+  Note the following flow:
+  ```sh
+    RUN ID    TASK                    PLATFORM    STATUS     TRIGGER       STARTED               DURATION
+  --------  ----------------------  ----------  ---------  ------------  --------------------  ----------
+  cdg9      helloworld              linux       Succeeded  Image Update  2019-11-15T20:33:24Z  00:00:36
+  cdg5      node-import-base-image  linux       Succeeded  Image Update  2019-11-15T20:32:50Z  00:00:48
+  cdg4      node-hub                linux       Succeeded  Commit        2019-11-15T20:32:31Z  00:00:27
+  ```
+- Stream logs
+  Open a 2nd bash window
+
+  ```sh
+  az acr task logs
+  ```
