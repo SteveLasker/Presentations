@@ -254,6 +254,8 @@ To simulate images on Docker Hub, which we can make direct changes to, we'll cre
   FROM node:9-alpine
   ```
 
+- Remove `$teleport` from `acr-task.yaml`
+
 - Reset `node-baseimage-import/Dockerfile` to disable the test validations
 
   ```dockerfile
@@ -484,7 +486,7 @@ To automate image building, we'll create a task, triggered by git commits
 
   ```sh
   az role assignment create \
-    --role Contributor \
+    --role acrpull \
     --assignee-object-id $(az acr task show \
                             -n helloworld \
                             --query identity.principalId \
@@ -570,6 +572,16 @@ We do require an identity for the task, as [az acr import](https://aka.ms/acr/im
 
   ```sh
   FROM demo42t.azurecr.io/base-artifacts/node:9-alpine
+  ```
+
+- Speed helm deploy with teleportation
+
+  ```yaml
+  cmd: >
+    $teleport $Registry/base-artifacts/acr/helm:v3 upgrade
+    helloworld ./charts/helloworld/
+    --reuse-values
+    --set helloworld.image=$Registry/demo42/helloworld:{{.Run.ID}}
   ```
 
 - Commit the change
