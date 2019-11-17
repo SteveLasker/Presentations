@@ -323,6 +323,12 @@ steps:
   - [GitHub node upstream dockerfile](https://github.com/demo42/node-upstream/blob/master/Dockerfile)
   - [Demo Snippets](https://github.com/SteveLasker/Presentations/tree/master/demo-scripts/buffering-building-patching)
 
+- Reset helloworld/server.js
+
+  ```json
+  response.write('<p>Hello World</p>');
+  ```
+
 - Open two Ubuntu Windows
   ```sh
   cd demo42/helloworld
