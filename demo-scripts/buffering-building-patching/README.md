@@ -486,7 +486,7 @@ To automate image building, we'll create a task, triggered by git commits
 
   ```sh
   az role assignment create \
-    --role acrpull \
+    --role Contributor \
     --assignee-object-id $(az acr task show \
                             -n helloworld \
                             --query identity.principalId \
