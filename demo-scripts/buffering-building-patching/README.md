@@ -15,6 +15,13 @@ In this demo we'll use [acr tasks][acr-tasks] to orchestrate the following event
 - once the base-artifact repo is updated, trigger rebuilds of the images that depend on this upstream change
 - sit back, and watch magic happen - we hope
 
+## Contents
+
+- [Demo Setup](#demo-setup)
+- [Demo Reset](#demo-reset)
+- [Demo Steps](#demo-steps)
+- [Troubleshooting](#troubleshooting)
+
 ## Demo Setup
 
 The following is required setup, prior to the actual demo
@@ -37,45 +44,46 @@ For the purposes of this demo, we'll create the 3 in single registry
       - **queueworker/**
 
 
-### Fork & Clone Repos
-
-```sh
-git clone ${GIT_NODE_UPSTREAM}
-git clone ${GIT_NODE_IMPORT}
-git clone ${GIT_HELLOWORLD}
-```
-
-## Create a Personal Access Token
-
-- See [ACR Build Docs](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-tutorial-build-task#create-a-github-personal-access-token) for specific permissions
-- Copy the PAT
-  Note, setting the PAT here, and not in the `env.sh` will store the PAT within Azure Key Vault for subsequent reference
+- Fork & Clone Repos
 
   ```sh
-  GITHUB_TOKEN=[Github PAT]
+  git clone ${GIT_NODE_UPSTREAM}
+  git clone ${GIT_NODE_IMPORT}
+  git clone ${GIT_HELLOWORLD}
   ```
 
-### Setup Environment Variables for Copy/Paste
+- Create a Personal Access Token
 
-- Edit [./env.sh](./env.sh) to match your environment variables
-- Import [./env.sh](./env.sh) to your shell
+See [ACR Build Docs](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-tutorial-build-task#create-a-github-personal-access-token) for specific permissions
 
-  ```sh
-  source ./env.sh
-  ```
+  - Copy the PAT
+    Note, setting the PAT here, and not in the `env.sh` will store the PAT within Azure Key Vault for subsequent reference
 
-### Create Key Vault Entries
+    ```sh
+    GITHUB_TOKEN=[Github PAT]
+    ```
 
-- GitHub Token secret
-  ```sh
+- Setup Environment Variables for Copy/Paste
 
-  az keyvault create --resource-group $RESOURCE_GROUP --name $AKV_NAME
+  - Edit [./env.sh](./env.sh) to match your environment variables
+  - Import [./env.sh](./env.sh) to your shell
 
-  az keyvault secret set \
-  --vault-name $AKV_NAME \
-  --name github-token \
-  --value $GITHUB_TOKEN
-  ```
+    ```sh
+    source ./env.sh
+    ```
+
+- Create Key Vault Entries
+
+  - GitHub Token secret
+
+    ```sh
+    az keyvault create --resource-group $RESOURCE_GROUP --name $AKV_NAME
+
+    az keyvault secret set \
+    --vault-name $AKV_NAME \
+    --name github-token \
+    --value $GITHUB_TOKEN
+    ```
 
 - Verify the values were saved
 
@@ -86,9 +94,8 @@ git clone ${GIT_HELLOWORLD}
       --query value -o tsv
     ```
 
-### Create a Registry
-
 - Create the registry
+
   ```sh
   az group create \
     --name $RESOURCE_GROUP \
@@ -100,11 +107,12 @@ git clone ${GIT_HELLOWORLD}
     --sku Premium
   ```
 
-- Configure AZ cli defaults
+- Configure `az cli` defaults
 
   ```sh
   az configure --defaults acr=${ACR_NAME}
   ```
+
 ### Create a Central Base Image ACR
 
 Regardless of the size of the company, you'll likely want to have a separate registry for managing base images. While it's possible to share a registry with multiple development teams, it's difficult to know how each team may work, possibly requiring VNet features, or other registry specific capabilities. To avoid future registry migration, we'll assume a separate registry for these centrally managed base images.
@@ -115,21 +123,21 @@ For the purposes of a demo, we'll consolidate them into one with different repos
   With environment variables set, create two registries. Note, the central registry is a Standard SKU as it doesn't require advanced configurations. The Dev registry will be put in a VNet, requiring the Premium SKU.
   > Note: A consumption based tier is coming, easing these choices.
 
-```sh
-#az group create --name $RESOURCE_GROUP --location $REGION
-#az acr create --resource-group $RESOURCE_GROUP --name $ACR_BASE_NAME --sku Standard
-#az acr create --resource-group $RESOURCE_GROUP --name $REGISTRY_DEV --sku Premium
-```
+  ```sh
+  #az group create --name $RESOURCE_GROUP --location $REGION
+  #az acr create --resource-group $RESOURCE_GROUP --name $ACR_BASE_NAME --sku Standard
+  #az acr create --resource-group $RESOURCE_GROUP --name $REGISTRY_DEV --sku Premium
+  ```
 
-### Create a Simulated Public Image
+- Create a Simulated Public Image
 
-Normally, this step wouldn't be needed as you would create a buffered image directly from the official node image. However, in this demo, we want to show what happens when the "official" node image is updated. 
+  Normally, this step wouldn't be needed as you would create a buffered image directly from the official node image. However, in this demo, we want to show what happens when the "official" node image is updated. 
 
-While we could put the image on our personal `docker.io/[user]/node` repository, ACR Task base image notifications from Docker Hub aren't event driven. ACR Tasks tracks which images are needed from Docker Hub, and retrieves them with a random interval between 10 and 60 minutes. While this works well for large scaling, it makes it hard to see changes quickly. Tasks base image notifications from Azure Container Registries are event driven, making them near immediate, and easy to validate and demonstrate.
+  While we could put the image on our personal `docker.io/[user]/node` repository, ACR Task base image notifications from Docker Hub aren't event driven. ACR Tasks tracks which images are needed from Docker Hub, and retrieves them with a random interval between 10 and 60 minutes. While this works well for large scaling, it makes it hard to see changes quickly. Tasks base image notifications from Azure Container Registries are event driven, making them near immediate, and easy to validate and demonstrate.
 
-To simulate a public image, we'll simply push the node image to `[registry].azurecr.io/hub/node:9-alpine`. As with any cloud-naive experience, we'll automate this with an ACR Task.
+  To simulate a public image, we'll simply push the node image to `[registry].azurecr.io/hub/node:9-alpine`. As with any cloud-naive experience, we'll automate this with an ACR Task.
 
-#### Single Registry Scenario for Demonstrations
+### Single Registry Scenario for Demonstrations
 
 | Scenario | Registry|
 |-|-|
@@ -138,7 +146,7 @@ To simulate a public image, we'll simply push the node image to `[registry].azur
 | **development teams** | `[registry]/dev-team-a/hellowrold`
 | **development teams** | `[registry]/dev-team-b/queueworker`
 
-#### Multiple Registry Sceanrio for Common Deployments
+### Multiple Registry Sceanrio for Common Deployments
 
 In this case, we leverage Docker Hub for the public base images, importing them into central team, under the contosocentral registry. This registry is geo-replicated across several regions, where the development teams operate.
 
@@ -178,13 +186,14 @@ To simulate images on Docker Hub, which we can make direct changes to, we'll cre
                           --query value -o tsv)
   ```
 
-- Start the task
+- Run the task
 
   ```sh
   az acr task run --name node-hub
   ```
 
-### Create an AKS Cluster
+- Create an AKS Cluster
+
 - Connect ACR and AKS
 
   ```sh
@@ -210,8 +219,8 @@ To simulate images on Docker Hub, which we can make direct changes to, we'll cre
   --name kube-config \
   --value "$(cat ~/.kube/config)" \
   --query name
-  
   ```
+
 - Installing KubeCTL Client
 
   ```sh
@@ -225,9 +234,6 @@ To simulate images on Docker Hub, which we can make direct changes to, we'll cre
       --name ${AKS_NAME} \
       --resource-group ${AKS_RG_NAME}
   ```
-
-
-### Install Helm
 
 - Installing Helm Client
 
@@ -341,7 +347,7 @@ steps:
 
 > The following are the steps for the actual demo.
 
-## Inner Loop
+### Inner Loop
 
 Before creating a full fledged deployment flow, lets start with a single container
 
@@ -355,15 +361,8 @@ Before creating a full fledged deployment flow, lets start with a single contain
     .
   ```
 
-- List images available, including the newly built image:
-
-  ```sh
-  az acr repository show-tags \
-  --repository demo42/helloworld
-  ```
-
-- List tags in lastupdate, descending order
-  - Or, browse the portal
+- List images available, in decending order  
+  *Or, browse the portal*
 
   ```sh
   az acr repository show-tags \
@@ -409,7 +408,7 @@ Using [Helm 3][helm-3], we'll deploy the chart
 
 - Browse the site, with the public IP from `get service`
 
-## Automate `helloworld` Build
+### Automate `helloworld` Build
 
 To automate image building, we'll create a task, triggered by git commits
 
@@ -459,8 +458,8 @@ To automate image building, we'll create a task, triggered by git commits
   az acr task create \
     -n helloworld \
     -f acr-task.yaml \
-    --context $GIT_HELLOWORLD \
     --assign-identity  \
+    --context $GIT_HELLOWORLD \
     --git-access-token $(az keyvault secret show \
                           --vault-name $AKV_NAME \
                           --name $GIT_TOKEN_NAME \
@@ -472,7 +471,7 @@ To automate image building, we'll create a task, triggered by git commits
   
   ```sh
   az role assignment create \
-    --role Contributor \
+    --role contributor \
     --assignee-object-id $(az acr task show \
                             -n helloworld \
                             --query identity.principalId \
@@ -486,7 +485,7 @@ To automate image building, we'll create a task, triggered by git commits
 
   ```sh
   az role assignment create \
-    --role Contributor \
+    --role contributor \
     --assignee-object-id $(az acr task show \
                             -n helloworld \
                             --query identity.principalId \
@@ -521,7 +520,7 @@ To automate image building, we'll create a task, triggered by git commits
 
 In [import-node-staging-task.yaml](./import-node-staging-task.yaml) we do a build, but only to get the base image, tag and digest for tracking. Once the build is done, we use [az acr import](https://aka.ms/acr/import) to copy the *public* image to our staging repo. 
 
-We do require an identity for the task, as [az acr import](https://aka.ms/acr/import) must first `az login --identity` in order to run import.
+Tasks requires an identity for [az acr import](https://aka.ms/acr/import), which is set using `az login --identity`.
 
 - Create a task.yaml, for the graph execution  
   View [import-node-staging-task.yaml](./import-node-staging-task.yaml) in VS Code
@@ -530,8 +529,8 @@ We do require an identity for the task, as [az acr import](https://aka.ms/acr/im
   ```sh
   az acr task create \
     --name node-import-base-image \
-    --assign-identity  \
     -f acr-task.yaml \
+    --assign-identity  \
     --context ${GIT_NODE_IMPORT} \
     --git-access-token $(az keyvault secret show \
                           --vault-name ${AKV_NAME} \
@@ -544,7 +543,7 @@ We do require an identity for the task, as [az acr import](https://aka.ms/acr/im
 
   ```sh
   az role assignment create \
-    --role Contributor \
+    --role contributor \
     --assignee-object-id $(az acr task show \
         -n node-import-base-image \
         --query identity.principalId \
@@ -668,7 +667,8 @@ Now that we've successfully automated the importing of a base image to our stagi
   az acr task logs
   ```
 
-- Node Import fails
+- Node Import fails  
+  We've now blocked this base change from coming into our registry. We could roll back the node:9-alpine tag to the previously taged image: `node:9-alpine-[build-id]`
 
 - Change Background Color to trigger a base update
 
@@ -678,26 +678,26 @@ Now that we've successfully automated the importing of a base image to our stagi
   ENV BACKGROUND_COLOR DeepSkyBlue
   ```
 
-- Commit and watch the changes
+- Commit and watch the series of changes, from node, importing and helloworld.
 
   ```sh
   watch -n1 az acr task list-runs
   ```
 
-
-## Back to slides
+- **Back to slides**
 
 ## Troubleshooting
 
 - Be sure your deploying an image that exists. Copy/paste and pull locally to verify
 - Assure creds are configured between AKS and ACR - See [ACR Diagnostics & Logging](https://aka.ms/acr/diagnostics)
-## Image & Tags on MCR
+
+### Image & Tags on MCR
 
 - https://mcr.microsoft.com/v2/_catalog
 - https://mcr.microsoft.com/v2/acr/azure-cli/tags/list
 - https://registry.hub.docker.com/v1/repositories/debian/tags
 
-## Local Testing
+### Local Testing
 
 ```sh
 az acr build -t node-import:test -f acr-task.yaml --no-push .
