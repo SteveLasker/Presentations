@@ -129,27 +129,47 @@ In the above case, the SBoM has already been pushed to the registry. To sign it 
       -t $IMAGE \
       https://github.com/wabbit-networks/net-monitor.git#main
     ```
-1. Push the image
+2. Push the image
     ```bash
     docker push $IMAGE
     ```
-1. Verify the image exists
+3. Verify the image exists
    ```bash
    oras discover $IMAGE --plain-http -o tree
    ```
-2. spdx push $IMAGE
+4. Create something to push to the registry
+   ```bash
+   echo "{something}" > something.json
+   ```
+5. Push a reference to the $IMAGE
+    ```
+    oras push $REPO \
+      --artifact-type org.example.thing.v0 \
+      --artifact-reference $IMAGE \
+      ./something.json \
+      --plain-http
+    ```
+3. Verify the image exists
+   ```bash
+   oras discover $IMAGE --plain-http -o tree
+   ```
+6. spdx push $IMAGE
     ```bash
     spdx push $IMAGE
     ```
-3. List the references associated with $IMAGE
+1. Discover the referenced artfiacts
+   ```bash
+   oras discover $IMAGE --plain-http -o tree
+   ```
+2. List the references associated with $IMAGE
    ```
    spdx ls $IMAGE
    ```
-4. SPDX Validate the $IMAGE
+3. SPDX Validate the $IMAGE
     ```
     spdx validate $IMAGE
     ```
-5. Do you have soup?
+4.  Do you have soup?
 
 ### Validate a policy where pepper is NOT allowed in your soup
 
