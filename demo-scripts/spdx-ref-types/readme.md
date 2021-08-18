@@ -88,7 +88,7 @@ Perform the following steps prior to the demo:
     oras discover \
       --plain-http \
       $IMAGE \
-      --output-json|jq
+      -o json|jq
     ```
 
 ### Sign the SBoM
@@ -105,7 +105,7 @@ In the above case, the SBoM has already been pushed to the registry. To sign it 
     --push \
     --push-reference oci://${REPO}@$(oras discover \
       --artifact-type org.spdx.sbom.v3 \
-      --output-json \
+      -o json \
       --plain-http \
       $IMAGE | jq -r .references[0].digest) \
     file:net-monitor_v1_spdx-manifest.json
@@ -114,7 +114,7 @@ In the above case, the SBoM has already been pushed to the registry. To sign it 
   ```bash
   DIGEST=$(oras discover \
       --artifact-type org.spdx.sbom.v3 \
-      --output-json \
+      -o json \
       --plain-http \
       $IMAGE | jq -r .references[0].digest)
 - Discover referenced artifacts of the SBoM
@@ -122,7 +122,7 @@ In the above case, the SBoM has already been pushed to the registry. To sign it 
   oras discover \
     --plain-http \
     ${REPO}@${DIGEST} \
-    --output-json|jq
+    -o json|jq
   ```
 - Generates:
   ```bash
@@ -134,6 +134,64 @@ In the above case, the SBoM has already been pushed to the registry. To sign it 
   ```
 
 The above workflow demonstrates the **Notary v2, prototype-2** target experience.
+
+## SPDX Tooling
+
+1. Build the net-monitor image
+    ```bash
+    docker build \
+      -t $IMAGE \
+      https://github.com/wabbit-networks/net-monitor.git#main
+    ```
+1. spdx push $IMAGE
+    ```bash
+    tern report -f spdxjson \
+        -i $IMAGE \
+        -o net-monitor_v1_spdx.json
+
+    code net-monitor_v1_spdx.json
+    ```
+2. Push the netmonitor image to the registry
+   ```
+   docker push $IMAGE
+   ```
+3. Push the SBoM with ORAS. The manifest is locally saved for signing the SBOM
+    ```
+    oras push $REPO \
+      --artifact-type org.spdx.sbom.v3 \
+      --artifact-reference $IMAGE \
+      --export-manifest net-monitor_v1_spdx-manifest.json \
+      --plain-http \
+      ./net-monitor_v1_spdx.json
+    ```
+4. Discover the SBOM, referenced to the `net-monitor:v1` image
+    ```
+    spdx ls $IMAGE
+    ```
+### Sign the SBoM
+
+In the above case, the SBoM has already been pushed to the registry. To sign it before pushing, we could have used `oras push` with the `--dry-run` and `--export-manifest` options.
+
+- For non-container images, we'll use the `nv2` cli to sign and  the `oras` cli to push to a registry. We'll use the `oras discover` cli to find the sbom digest the signature will reference.
+  ```bash
+  nv2 sign \
+    -m x509 \
+    -k wabbit-networks.key \
+    -c wabbit-networks.crt \
+    --plain-http \
+    --push \
+    --push-reference oci://${REPO}@$(oras discover \
+      --artifact-type org.spdx.sbom.v3 \
+      -o json \
+      --plain-http \
+      $IMAGE | jq -r .references[0].digest) \
+    file:net-monitor_v1_spdx-manifest.json
+  ```
+
+- Discover the SBOM, referenced to the `net-monitor:v1` image
+    ```
+    spdx ls $IMAGE
+    ```
 
 ### Simulating a Registry DNS Name
 
@@ -163,6 +221,35 @@ Configure the additional steps to simulate a fully qualified dns name for wabbit
     127.0.0.1 registry.wabbit-networks.io
     ```
 - Continue with [Start a Local Registry Instance](#start-a-local-registry-instance)
+
+### SPDX
+
+export PORT=80
+export REGISTRY=registry.wabbit-networks.io
+export REPO=${REGISTRY}/net-monitor
+export IMAGE=${REPO}:v1
+  
+spdx push $IMAGE
+
+/ spdx push does:
+- generates the SPDX document with `tern report` (shell out to the tern cli, assuming it's on disk)
+- signs the spdx.json output
+- pushes both the spdx artifact and the nv2 signature to the registry
+
+spdx ls $IMAGE
+- list the SPDX documents for the image
+- tree of signatures
+- equivalent to `oras discover artifact-type=org.spdx.v3 -o tree`
+
+1. oras binary
+2. change the default artifactType = org.spdx.v3, with layer mediaTypes of application/tar
+3. internally, shell out to tern report
+4. push as an artifact.manifest, with the subjectManifest = $IMAGE digest
+5. push an nv2 signature
+
+Add a validate command
+return "soup for you"
+
 
 [oci-artifact-manifest-spec]:   https://github.com/SteveLasker/artifacts/blob/oci-artifact-manifest/artifact-manifest-spec.md
 [oci-artifact-manifest]:        https://github.com/SteveLasker/artifacts/blob/oci-artifact-manifest/artifact-manifest.md
