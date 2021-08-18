@@ -21,6 +21,7 @@ Perform the following steps prior to the demo:
   export REGISTRY=localhost:${PORT}
   export REPO=${REGISTRY}/net-monitor
   export IMAGE=${REPO}:v1
+  export PEPPER_IMAGE=${REPO}:pepper
   ```
 - Generate the Wabbit Networks Public and Private Keys:
   ```bash
@@ -79,16 +80,13 @@ Perform the following steps prior to the demo:
     ```
 4. Discover the SBOM, referenced to the `net-monitor:v1` image
     ```
-    oras discover \
-      --plain-http \
-      $IMAGE
+    oras discover $IMAGE -o tree \
+      --plain-http
     ```
 5. Formatted as JSON
     ```
-    oras discover \
-      --plain-http \
-      $IMAGE \
-      -o json|jq
+    oras discover $IMAGE -o json \
+      --plain-http | jq
     ```
 
 ### Sign the SBoM
@@ -108,32 +106,20 @@ In the above case, the SBoM has already been pushed to the registry. To sign it 
       -o json \
       --plain-http \
       $IMAGE | jq -r .references[0].digest) \
+    -o spdx-signature.json \
     file:net-monitor_v1_spdx-manifest.json
   ```
-- Dynamically get the SBoM digest
-  ```bash
-  DIGEST=$(oras discover \
-      --artifact-type org.spdx.sbom.v3 \
-      -o json \
-      --plain-http \
-      $IMAGE | jq -r .references[0].digest)
 - Discover referenced artifacts of the SBoM
   ```bash
-  oras discover \
-    --plain-http \
-    ${REPO}@${DIGEST} \
-    -o json|jq
+  oras discover $IMAGE -o tree \
+    --plain-http
   ```
 - Generates:
   ```bash
-  Discovered 1 artifacts referencing localhost:5000/net-monitor@sha256:adfe3a3c50838fc2a19d5d7e73119dcadad7ad8e4e98f1e0fd100dd9d2278b71
-  Digest: sha256:adfe3a3c50838fc2a19d5d7e73119dcadad7ad8e4e98f1e0fd100dd9d2278b71
-
-  Artifact Type                    Digest
-  application/vnd.cncf.notary.v2   sha256:b7fc5fdb81f2ada359d0a709004360d1f08c9d2ac8a80630b152d1c6fb35460e
+  registry.wabbit-networks.io/net-monitor:v1
+  └── [org.spdx.sbom.v3]sha256:1f36ab761fb33f00f024218c8f8c4fc03984150c5217e3e6ef555f48089f88b1
+      └── [application/vnd.cncf.notary.v2]sha256:a9b4a896c5e63a19279b0482c4cccde8ed616df14840e02cff13a8e3f04fa22d
   ```
-
-The above workflow demonstrates the **Notary v2, prototype-2** target experience.
 
 ## SPDX Tooling
 
@@ -143,55 +129,54 @@ The above workflow demonstrates the **Notary v2, prototype-2** target experience
       -t $IMAGE \
       https://github.com/wabbit-networks/net-monitor.git#main
     ```
-1. spdx push $IMAGE
+1. Push the image
     ```bash
-    tern report -f spdxjson \
-        -i $IMAGE \
-        -o net-monitor_v1_spdx.json
-
-    code net-monitor_v1_spdx.json
+    docker push $IMAGE
     ```
-2. Push the netmonitor image to the registry
+1. Verify the image exists
+   ```bash
+   oras discover $IMAGE --plain-http -o tree
    ```
-   docker push $IMAGE
+2. spdx push $IMAGE
+    ```bash
+    spdx push $IMAGE
+    ```
+3. List the references associated with $IMAGE
    ```
-3. Push the SBoM with ORAS. The manifest is locally saved for signing the SBOM
+   spdx ls $IMAGE
+   ```
+4. SPDX Validate the $IMAGE
     ```
-    oras push $REPO \
-      --artifact-type org.spdx.sbom.v3 \
-      --artifact-reference $IMAGE \
-      --export-manifest net-monitor_v1_spdx-manifest.json \
-      --plain-http \
-      ./net-monitor_v1_spdx.json
+    spdx validate $IMAGE
     ```
-4. Discover the SBOM, referenced to the `net-monitor:v1` image
-    ```
-    spdx ls $IMAGE
-    ```
-### Sign the SBoM
+5. Do you have soup?
 
-In the above case, the SBoM has already been pushed to the registry. To sign it before pushing, we could have used `oras push` with the `--dry-run` and `--export-manifest` options.
+### Validate a policy where pepper is NOT allowed in your soup
 
-- For non-container images, we'll use the `nv2` cli to sign and  the `oras` cli to push to a registry. We'll use the `oras discover` cli to find the sbom digest the signature will reference.
-  ```bash
-  nv2 sign \
-    -m x509 \
-    -k wabbit-networks.key \
-    -c wabbit-networks.crt \
-    --plain-http \
-    --push \
-    --push-reference oci://${REPO}@$(oras discover \
-      --artifact-type org.spdx.sbom.v3 \
-      -o json \
-      --plain-http \
-      $IMAGE | jq -r .references[0].digest) \
-    file:net-monitor_v1_spdx-manifest.json
-  ```
+1. Build the net-monitor `:pepper` image
+    ```bash
+    docker build \
+      -t $PEPPER_IMAGE \
+      https://github.com/wabbit-networks/net-monitor.git#pepper
+    ```
+1. Push the image
+    ```bash
+    docker push $PEPPER_IMAGE
+    ```
+1. spdx push $PEPPER_IMAGE
+    ```bash
+    spdx push $PEPPER_IMAGE
+    ```
+1. List the references associated with $IMAGE
+   ```
+   spdx ls $PEPPER_IMAGE
+   ```
+1. SPDX Validate the $PEPPER_IMAGE
+    ```
+    spdx validate $PEPPER_IMAGE
+    ```
+1. Do you have soup?
 
-- Discover the SBOM, referenced to the `net-monitor:v1` image
-    ```
-    spdx ls $IMAGE
-    ```
 
 ### Simulating a Registry DNS Name
 
@@ -228,7 +213,8 @@ export PORT=80
 export REGISTRY=registry.wabbit-networks.io
 export REPO=${REGISTRY}/net-monitor
 export IMAGE=${REPO}:v1
-  
+export PEPPER_IMAGE=${REPO}:pepper
+
 spdx push $IMAGE
 
 / spdx push does:
