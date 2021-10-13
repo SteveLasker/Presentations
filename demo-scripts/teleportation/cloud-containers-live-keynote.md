@@ -97,7 +97,16 @@ time docker run --rm demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 echo 'he
 
 - Make a base image chage
 
-  - Change the background color from white to DeepSkyBlue
+- Show a blocked update
+  - Change the background color from white to Red
+
+    ```sh
+    FROM node:9-alpine
+    ENV NODE_VERSION 9.1-alpine
+    ENV BACKGROUND_COLOR red
+    ```
+
+- Change the background color from white to DeepSkyBlue
     Edit: https://github.com/demo42/node-upstream/blob/master/Dockerfile
 
     ```sh
@@ -114,11 +123,3 @@ time docker run --rm demo42t.azurecr.io/base-artifacts/azure-cli:2.0.75 echo 'he
   ```
 - Wait for the change to trickle through
 
-- Show a blocked update
-  - Change the background color from white to Red
-
-    ```sh
-    FROM node:9-alpine
-    ENV NODE_VERSION 9.1-alpine
-    ENV BACKGROUND_COLOR red
-    ```
