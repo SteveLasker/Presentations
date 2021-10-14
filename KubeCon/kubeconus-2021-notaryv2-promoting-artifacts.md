@@ -27,7 +27,8 @@
 - Generate a self-signed test certificate for signing artifacts
   The following will generate a self-signed X.509 certificate under the `~/config/notation/` directory
   ```bash
-  notation cert generate-test --default "wabbit-networks.io"
+  notation cert generate-test \
+    --default "wabbit-networks.io"
   ```
 
 ## Building and Pushing the Public Image
@@ -43,7 +44,7 @@
 - List the image, and any associated signatures
   ```bash
   notation list $PUBLIC_IMAGE
-  oras discover $PUBLIC_IMAGE -o tree
+  oras discover -o tree $PUBLIC_IMAGE
   ```
 ## Generate, Sign, Push SBoMs
 -- Push an SBoM
@@ -64,12 +65,12 @@
   ```
 - View the graph
   ```bash
-  oras discover $PUBLIC_IMAGE -o tree
+  oras discover -o tree $PUBLIC_IMAGE
   ```
 ## Generate, Sign, Push a Scan Result
 - Scan the image, saving the results
   ```bash
-  docker scan $PUBLIC_IMAGE --json > scan-results.json
+  docker scan --json $PUBLIC_IMAGE > scan-results.json
   cat scan-results.json | jq
   ```
 - Push the scan results to the registry, referencing the image
@@ -87,8 +88,12 @@
 
   notation sign $PUBLIC_REPO@$SCAN_DIGEST
 
-  oras discover $PUBLIC_IMAGE -o tree
+  oras discover -o tree $PUBLIC_IMAGE
   ```
+## Back to Slides
+
+Setup promotion w/copy semantics
+
 ## Import the Public Image
 
 - The private registry is empty
@@ -109,7 +114,8 @@
 - Create a test cert for the ACME Rockets Library key
   ```bash
   notation cert generate-test \
-    --trust --default "acme-rockets.io-library"
+    --trust --default \
+    "acme-rockets.io-library"
   ```
 - To support tag update scenarios, the image must be signed with a new signature and pushed with all artifact references
 - Sign the imported image, locally
@@ -121,12 +127,12 @@
   ```
 - View the current graph in the private registry
   ```bash
-  oras discover $PRIVATE_IMAGE -o tree
+  oras discover -o tree $PRIVATE_IMAGE
   ```
 - Copy the graph of content from a source to destination registry/repo. ([See Copy Artifact Reference Graph #307](https://github.com/oras-project/oras/issues/307))  
 The `net-monitor:v1` image will be ignored as the digest of the image manifest will already exist, however all the references that don't yet exist will be copied. Lastly a tag update will be applied as `oras cp` always copies the content before applying a tag update.
   ```bash
-  oras cp $PUBLIC_IMAGE $PRIVATE_IMAGE -r
+  oras cp -r $PUBLIC_IMAGE $PRIVATE_IMAGE
   ```
 - List the repos in the target registry
   ```bash
@@ -138,8 +144,16 @@ The `net-monitor:v1` image will be ignored as the digest of the image manifest w
   ```
 - List the graph of artifacts for the `net-monitor:v1` image in the ACME Rockets registry
   ```bash 
-  oras discover $PRIVATE_IMAGE -o tree
+  oras discover -o tree \
+  $PRIVATE_IMAGE
   ```
+- Filter the graph of artifacts for the `net-monitor:v1` to specific artifact types
+  ```bash 
+  oras discover -o tree \
+    --artifact-type org.cncf.notary.v2 \
+    $PRIVATE_IMAGE 
+  ```
+
 ## Demo Reset
 
 ``` bash
