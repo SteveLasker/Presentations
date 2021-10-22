@@ -49,7 +49,9 @@ docker push $IMAGE
 ## Sign/Validate Recording
 ```bash
 asciinema rec -t "notation quick-start" -i 2 --overwrite sign-verify.cast
+sudo asciicast2gif -t tango sign-verify.cast sign-verify.gif
 docker run --rm -v $PWD:/data asciinema/asciicast2gif  sign-verify.cast sign-verify.gif
+asciicas
 ```
 
 ## Publish Additional Objects
@@ -159,6 +161,7 @@ The `net-monitor:v1` image will be ignored as the digest of the image manifest w
 
 ## Convert to gif
 ```bash
+sudo asciicast2gif -t tango additional-objects.cast additional-objects.gif
 docker run --rm -v $PWD:/data asciinema/asciicast2gif  additional-objects.cast additional-objects.gif
 ```
 
