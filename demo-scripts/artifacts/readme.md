@@ -28,7 +28,8 @@ ORAS releases can be found at: [oras releases][oras-releases]
   cp ./oras/oras ~/bin/oras
   ```
 ## Building and Pushing
-- Build and Push the `net-monitor` software
+
+- Build and Push $IMAGE
   ```bash
   docker build -t $IMAGE https://github.com/wabbit-networks/net-monitor.git#main
 
@@ -81,7 +82,7 @@ To find the list of artifacts that reference a `subject` artifact (such as a con
   ```http
   curl $REGISTRY/oras/artifacts/v1/net-monitor/manifests/$DIGEST/referrers | jq
   ```
-- Get a filtered list by artifactType
+- Get a filtered list by `artifactType`
   ```http
   curl $REGISTRY/oras/artifacts/v1/net-monitor/manifests/$DIGEST/referrers?artifactType=sbom%2Fexample | jq
   ```
