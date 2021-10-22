@@ -16,13 +16,7 @@ Perform the following steps prior to the demo:
     ```
 - Setup names and variables with `localhost:5000`
   >**NOTE:** See [Simulating a Registry DNS Name](#simulating-a-registry-dns-name) for using `registry.wabbit-networks.io`
-  ```bash
-  export PORT=5000
-  export REGISTRY=localhost:${PORT}
-  export REPO=${REGISTRY}/net-monitor
-  export IMAGE=${REPO}:v1
-  export PEPPER_IMAGE=${REPO}:pepper
-  ```
+
 - Generate the Wabbit Networks Public and Private Keys:
   ```bash
   openssl req \
@@ -123,6 +117,14 @@ In the above case, the SBoM has already been pushed to the registry. To sign it 
 
 ## SPDX Tooling
 
+  ```bash
+  export PORT=5000
+  export REGISTRY=localhost:${PORT}
+  export REPO=${REGISTRY}/net-monitor
+  export IMAGE=${REPO}:v1
+  export PEPPER_IMAGE=${REPO}:pepper
+  ```
+
 1. Build the net-monitor image
     ```bash
     docker build \
@@ -208,6 +210,7 @@ Configure the additional steps to simulate a fully qualified dns name for wabbit
   export REGISTRY=registry.wabbit-networks.io
   export REPO=${REGISTRY}/net-monitor
   export IMAGE=${REPO}:v1
+
   ```
 - Edit the `~/.docker/nv2.json` file to support local, insecure registries
   ```json
@@ -227,13 +230,7 @@ Configure the additional steps to simulate a fully qualified dns name for wabbit
     ```
 - Continue with [Start a Local Registry Instance](#start-a-local-registry-instance)
 
-### SPDX
-
-export PORT=80
-export REGISTRY=registry.wabbit-networks.io
-export REPO=${REGISTRY}/net-monitor
-export IMAGE=${REPO}:v1
-export PEPPER_IMAGE=${REPO}:pepper
+### SPDX notes
 
 spdx push $IMAGE
 
