@@ -27,16 +27,17 @@ oras login $REGISTRY -u $NOTATION_USERNAME -p $NOTATION_PASSWORD
 
 docker run -d -p ${PORT}:5000 ghcr.io/oras-project/registry:v0.0.3-alpha
 ```
-
+## Binaries
+curl -Lo https://github.com/shizhMSFT/oras/releases/tag/v0.11.1-shizh.1
 ## Sign/Validate Recording
 ```bash
-asciinema rec -t "notation in Azure" -i 2 --overwrite notation-in-azure2.cast
+asciinema rec -t "notation in Azure" -i 2 --overwrite notation-in-azure.cast
 sudo asciicast2gif -t tango notation-in-azure.cast notation-in-azure.gif
 ```
 
 ## Demo
 
-- View the [Azure Portal](https://df.onecloud.azure-test.net/?Microsoft_Azure_ContainerRegistries=true#@MSFT.ccsctp.net/resource/subscriptions/f9d7ebed-adbd-4cb4-b973-aaf82c136138/resourceGroups/wabbitnetworks-acr/providers/Microsoft.ContainerRegistry/registries/wabbitnetworks/repository)
+- View the [Azure Portal](https://aka.ms/acr/portal/df)
 
 - We'll build, push, sign, SBOM, scan and sign again, in Azure
 ```bash
@@ -92,7 +93,7 @@ echo $IMAGE
   ```
 - View the tags
   ```bash
-  # View the list of images we want to think about
+  # View the list of artifacts we want to think about
   az acr repository show-tags -n wabbitnetworks --repository net-monitor -o jsonc
   ```  
 - List the files
@@ -167,7 +168,6 @@ echo $IMAGE
 ## Portal - View tag listings
 
 - [dogfood portal](http://aka.ms/acr/portal/df)
-- [wabbitnetworks tag listing](https://df.onecloud.azure-test.net/?Microsoft_Azure_ContainerRegistries=true#@MSFT.ccsctp.net/resource/subscriptions/f9d7ebed-adbd-4cb4-b973-aaf82c136138/resourceGroups/wabbitnetworks-acr/providers/Microsoft.ContainerRegistry/registries/wabbitnetworks/repository)
 
 ### Generate, Sign, Push SBoMs
 
@@ -230,6 +230,12 @@ echo $IMAGE
   # We now have a full self-described graph of
   oras discover -o tree -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
   ```
+
+## Convert to gif
+```bash
+sudo asciicast2gif -t tango additional-objects.cast additional-objects.gif
+docker run --rm -v $PWD:/data asciinema/asciicast2gif  additional-objects.cast additional-objects.gif
+```
 
 ## Demo Reset
 
