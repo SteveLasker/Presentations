@@ -30,12 +30,19 @@ docker run -d -p ${PORT}:5000 ghcr.io/oras-project/registry:v0.0.3-alpha
 ## Binaries
 
 ### notation
+
+```bash
 curl -Lo notation.tar.gz https://github.com/shizhMSFT/notation/releases/download/v0.7.0-shizh.2/notation_0.7.0-shizh.2_linux_amd64.tar.gz
+
 tar xvzf notation.tar.gz -C ~/bin notation
+```
 
 ### oras
+
+```bash
 curl -Lo oras.tar.gz https://github.com/shizhMSFT/oras/releases/download/v0.11.1-shizh.1/oras_0.11.1-shizh.1_linux_amd64.tar.gz
 tar xvzf oras.tar.gz -C ~/bin oras
+```
 
 ## Sign/Validate Recording
 ```bash
