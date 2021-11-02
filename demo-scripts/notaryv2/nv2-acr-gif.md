@@ -124,7 +124,9 @@ echo $IMAGE
 - View all manifests
   ```bash
   # View all the artifacts in the registry
-  az acr repository show-manifests -n wabbitnetworks  --repository net-monitor -o jsonc
+  az acr repository show-manifests \
+    -n wabbitnetworks --repository net-monitor \
+    --detail -o jsonc
   ```
 ## Second Signature/Promotion
 - Clear the images as this is our production vm
