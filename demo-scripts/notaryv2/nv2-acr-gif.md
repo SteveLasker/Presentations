@@ -11,21 +11,18 @@ export IMAGE=${REPO}:v1
 # Create an ACR
 # Premium to use tokens
 az acr create -n $ACR_NAME -g $(ACR_NAME)-acr --sku Premium
-az configure --default acr=wabbitnetworks
+az configure --default acr=$ACR_NAME
 az acr update --anonymous-pull-enabled true
 
 # Using ACR Auth with Tokens
-export NOTATION_USERNAME='wabbitnetworks-token'
+export NOTATION_USERNAME=$ACR_NAME'-token'
 export NOTATION_PASSWORD=$(az acr token create -n $NOTATION_USERNAME \
-                    -r wabbitnetworks \
+                    -r $ACR_NAME \
                     --scope-map _repositories_admin \
                     --only-show-errors \
                     -o json | jq -r ".credentials.passwords[0].value")
 
 docker login $REGISTRY -u $NOTATION_USERNAME -p $NOTATION_PASSWORD
-oras login $REGISTRY -u $NOTATION_USERNAME -p $NOTATION_PASSWORD
-
-docker run -d -p ${PORT}:5000 ghcr.io/oras-project/registry:v0.0.3-alpha
 ```
 ## Binaries
 
@@ -55,26 +52,26 @@ sudo asciicast2gif -t tango notation-in-azure.cast notation-in-azure.gif
 - View the [Azure Portal](https://aka.ms/acr/portal/df)
 
 - We'll build, push, sign, SBOM, scan and sign again, in Azure
-```bash
+  ```bash
   # We'll build, push, sign, SBOM, scan and sign again, in Azure
   echo $IMAGE
-```
+  ```
 echo $IMAGE
 - Build and push an image
-```bash
+  ```bash
   # Build and push to ACR
   docker build -t $IMAGE https://github.com/wabbit-networks/net-monitor.git#main
   docker push $IMAGE
-```
+    ```
 - Generate a test certificate
-    ```bash
-    # Generate a test certificate
-    notation cert generate-test --default "wabbit-networks.io"
-    ```
+  ```bash
+  # Generate a test certificate
+  notation cert generate-test --default "wabbit-networks.io"
+  ```
 - Sign the image
-    ```bash
-    notation sign $IMAGE
-    ```
+  ```bash
+  notation sign $IMAGE
+  ```
 - List the signatures with notation
   ```bash
   # List the signatures
@@ -104,12 +101,15 @@ echo $IMAGE
 - View the graph
   ```bash
   # View the graph of artifacts
-  oras discover -o tree -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
+  oras discover \
+    -u $NOTATION_USERNAME -p $NOTATION_PASSWORD \
+    -o tree $IMAGE
   ```
 - View the tags
   ```bash
   # View the list of artifacts we want to think about
-  az acr repository show-tags -n wabbitnetworks --repository net-monitor -o jsonc
+  az acr repository show-tags \
+    --repository net-monitor -o jsonc
   ```  
 - List the files
   ```bash
@@ -136,7 +136,7 @@ echo $IMAGE
   ```
 - List the images 
   ```bash
-  docker images
+  docker images -a
   ```
 - Clear the configuration policy
   ```bash
@@ -162,9 +162,9 @@ echo $IMAGE
   notation verify $IMAGE
   ```
 - Sign the image with the Production cert
-    ```bash
-    notation sign $IMAGE
-    ```
+  ```bash
+  notation sign $IMAGE
+  ```
 - Configure the ACME Rockets key for validation
   ```bash
   # Add the ACME Rockets key to the config policy
@@ -179,9 +179,10 @@ echo $IMAGE
 - View the graph
   ```bash
   # View the graph of artifacts
-  oras discover -o tree \
-    -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
-  ```
+  oras discover \
+      -u $NOTATION_USERNAME -p $NOTATION_PASSWORD \
+      -o tree $IMAGE
+    ```
 ## Portal - View tag listings
 
 - [dogfood portal](http://aka.ms/acr/portal/df)
@@ -216,8 +217,9 @@ echo $IMAGE
 - View the graph
   ```bash
   # View the graph
-  oras discover -o tree \
-    -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
+  oras discover \
+      -u $NOTATION_USERNAME -p $NOTATION_PASSWORD \
+      -o tree $IMAGE
   ```
 ### Generate, Sign, Push a Scan Result
 - Scan the image, saving the results
@@ -244,9 +246,49 @@ echo $IMAGE
                   $IMAGE | jq -r ".references[0].digest")
 
   notation sign $REPO@$SCAN_DIGEST
+
   # We now have a full self-described graph of
-  oras discover -o tree -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
+  oras discover \
+    -u $NOTATION_USERNAME -p $NOTATION_PASSWORD \
+    -o tree $IMAGE
   ```
+- View a filtered graph
+  ```bash
+  oras discover \
+    --artifact-type "application/vnd.cncf.notary.v2.signature" \
+    -u $NOTATION_USERNAME -p $NOTATION_PASSWORD \
+    -o tree $IMAGE
+  ```
+## Import the Public Image
+
+- The private registry is empty
+  ```bash
+  curl $PRIVATE_REGISTRY/v2/_catalog | jq
+  ```
+- Copy the graph of content from a source to destination registry/repo. ([See Copy Artifact Reference Graph #307](https://github.com/oras-project/oras/issues/307))  
+The `net-monitor:v1` image will be ignored as the digest of the image manifest will already exist, however all the references that don't yet exist will be copied. Lastly a tag update will be applied as `oras cp` always copies the content before applying a tag update.
+  ```bash
+  oras cp -r $PUBLIC_IMAGE $PRIVATE_IMAGE
+  ```
+- List the repos in the target registry
+  ```bash
+  curl $PRIVATE_REGISTRY/v2/_catalog | jq
+  ```
+- List the tags in the target repo
+  ```bash
+  curl $PRIVATE_REGISTRY/v2/net-monitor/tags/list | jq
+  ```
+- List the graph of artifacts for the `net-monitor:v1` image in the ACME Rockets registry
+  ```bash 
+  oras discover -o tree $PRIVATE_IMAGE
+  ```
+- Filter the graph of artifacts for the `net-monitor:v1` to specific artifact types
+  ```bash 
+  oras discover -o tree \
+    --artifact-type application/vnd.cncf.notary.v2.signature \
+    $PRIVATE_IMAGE 
+  ```
+
 
 ## Convert to gif
 ```bash
@@ -273,6 +315,6 @@ To resetting the environment
 - Edit `~/.config/notation/config.json` to support local, insecure registries
   ```bash
   mkdir ~/.config/notation
-  echo '{"insecureRegistries": ["registry.wabbit-networks.io","localhost:5000"]}' > ~/.config/notation/config.json
+  echo '{"insecureRegistries": ["registry.wabbit-networks.io","localhost:5000","localhost:5050"]}' > ~/.config/notation/config.json
   ```
 
