@@ -29,8 +29,8 @@ Notary v2 - Remote Signing and Verification with Gatekeeper, Ratify and AKS
 2. Copy the plugin to the notation plugin directory
 
     ```bash
-    mkdir -p ~/.config/notation/plugins/akv
-    cp ./bin/notation-akv ~/.config/notation/plugins/akv
+    mkdir -p ~/.config/notation/plugins/azure-kv
+    cp ./bin/notation-akv ~/.config/notation/plugins/azure-kv
     ```
 
 ### Configure Environment Variables
@@ -109,6 +109,7 @@ To ease the execution of the commands to complete this article, provide values f
 4. Create a credentials file for notation-akv plugin
 
     ```bash
+    mkdir -p ~/.config/notation-akv/
     cat <<EOF > ~/.config/notation-akv/config.json
     {
       "credentials": {
@@ -125,7 +126,7 @@ To ease the execution of the commands to complete this article, provide values f
 1. Add the Plugin
 
     ```bash
-    notation plugin add akv ~/.config/notation/plugins/akv/notation-akv
+    notation plugin add azure-kv ~/.config/notation/plugins/azure-kv/notation-akv
     ```
 
 2. List the available plugins
@@ -218,13 +219,13 @@ In this step, Gatekeeper will be configured, enabling deployment policies.
  
  ## Demo Steps
 
-Recap:
+We're starting with the following basic Azure service configurations
 
 - An ACR with ORAS Artifacts Support, enabling graphs of supply chain artifacts
 - An AKS instance, linked to ACR for pulling images
 - AKS with Gatekeeper support
 
-What we'll now demo:
+We'll now demo:
 
 1. Creating a cert in Azure Key Vault, used for remote signing
    1. The cert can be a CA issues, or self-signed cert. It's really up to the the user whether they need revocation for their controlled environment scenarios
@@ -236,12 +237,23 @@ What we'll now demo:
 
 ### Deploy an image
 
-1. Deploy `hello-world:latest` to show a functioning cluster
+1. Create a namespace in AKS
 
-    ```bash
-    kubectl run hello-world --image=hello-world:latest -n demo
+    ```azurecli-interactive
+    kubectl create ns freezone
     ```
 
+2. Deploy `hello-world:latest` to show a functioning cluster
+
+    ```bash
+    kubectl run hello-world --image=mcr.microsoft.com/azuredocs/aci-helloworld:latest -n freezone
+    ```
+
+3. List the running pods
+
+    ```bash
+    kubectl get pods -A
+    ```
 
 ## Store the signing certificate in Azure Key Vault
 
@@ -285,8 +297,8 @@ Create or provide an x509 signing certificate, storing it in Azure Key Vault for
 4. Add the Key Id to the kms keys and certs
 
     ```bash
-    notation key add --name $KEY_NAME --plugin akv --id $KEY_ID --kms
-    notation cert add --name $KEY_NAME --plugin akv --id $KEY_ID --kms
+    notation key add --name $KEY_NAME --plugin azure-kv --id $KEY_ID --kms
+    notation cert add --name $KEY_NAME --plugin azure-kv --id $KEY_ID --kms
     ```
 
 5. List the keys and certs to confirm
@@ -301,8 +313,18 @@ Create or provide an x509 signing certificate, storing it in Azure Key Vault for
 1. Capture the public key for verification
 
     ```azure-cli
-    az keyvault certificate download -n $KEY_NAME --vault-name $AKV_NAME -f file.pem
+    az keyvault certificate download \
+      -n $KEY_NAME \
+      --vault-name $AKV_NAME \
+      -f file.pem
+    
     export PUBLIC_KEY=$(cat file.pem)
+    ```
+
+1. Create a namespace in AKS
+
+    ```azurecli-interactive
+    kubectl create ns demo
     ```
 
 2. Install Ratify
@@ -316,8 +338,91 @@ Create or provide an x509 signing certificate, storing it in Azure Key Vault for
         --set registryCredsSecret=regcred \
         --set ratifyTestCert=$PUBLIC_KEY
 
-    kubectl apply -f ./ratify/charts/ratify-gatekeeper/templates/constraint.yaml 
+    kubectl apply -f ./ratify/charts/ratify-gatekeeper/templates/constraint.yaml
+
+    cat ./ratify/charts/ratify-gatekeeper/templates/constraint.yaml
     ```
+
+2. Deploy `hello-world:latest` to show a functioning cluster
+
+    ```bash
+    kubectl run hello-world \
+      --image=mcr.microsoft.com/azuredocs/aci-helloworld:latest \
+      -n demo
+    ```
+
+3. List the running pods
+
+    ```bash
+    kubectl get pods -A
+    ```
+
+## Build an Image
+
+1. Build and Push a new image with ACR Tasks
+
+    ```azure-cli
+    az acr build -r $ACR_NAME -t $IMAGE $IMAGE_SOURCE
+    ```
+
+2. Sign the container image
+
+    ```bash
+    notation sign --key $KEY_NAME $IMAGE 
+    ```
+
+3. Deploy the signed `net-monitor:v1` image
+
+    ```bash
+    kubectl run net-monitor --image=$IMAGE -n demo
+    ```
+
+3. List the running pods
+
+    ```bash
+    kubectl get pods -A
+    ```
+
+4. Delete the pod
+
+    ```bash
+    kubectl delete pod net-monitor -n demo
+    ```
+
+## Demo Reset
+
+- Remove keys, certificates and notation `config.json`
+  ```bash
+  rm ./file.pem
+  rm ~/.config/notation/config.json
+  #rm ~/.config/notation-akv/config.json
+  ```
+
+1. Add the Plugin
+
+    ```bash
+    notation plugin add azure-kv ~/.config/notation/plugins/azure-kv/notation-akv
+    ```
+
+    ```bash
+    az keyvault certificate delete -n $KEY_NAME --vault-name $AKV_NAME
+    az keyvault certificate purge --vault-name $AKV_NAME --name $KEY_NAME
+    ```
+
+- Clear the ACR repo
+  ```bash
+  az acr repository delete \
+    -n $ACR_NAME \
+    --repository $ACR_REPO -y
+  ```
+
+- Clear up AKS resources
+
+  ```bash
+  helm uninstall ratify
+  kubectl delete ns demo
+  kubectl delete ns freezone
+  ```
 
 ## Cleanup Resources
 
