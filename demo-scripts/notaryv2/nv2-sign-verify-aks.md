@@ -16,21 +16,22 @@ Notary v2 - Remote Signing and Verification with Gatekeeper, Ratify and AKS
     cp ./bin/notation ~/bin
     ```
 
-1. Build the notation-akv plugin for remote signing and verification
+2. Build the notation-akv plugin for remote signing and verification
 
+    > NOTE: We will have 
     ```bash
     # Move back to the root directory
     cd ../
-    git clone git@github.com:Azure/notation-akv.git -b dev
-    cd notation-akv
+    git clone git@github.com:Azure/notation-azure-kv.git
+    cd notation-azure-kv
     make build
     ```
 
-2. Copy the plugin to the notation plugin directory
+3. Copy the plugin to the notation plugin directory
 
     ```bash
     mkdir -p ~/.config/notation/plugins/azure-kv
-    cp ./bin/notation-akv ~/.config/notation/plugins/azure-kv
+    cp ./bin/notation-azure-kv ~/.config/notation/plugins/azure-kv
     ```
 
 ### Configure Environment Variables
@@ -89,36 +90,21 @@ To ease the execution of the commands to complete this article, provide values f
     SP_NAME=https://${AKV_NAME}-sp
 
     # Create the service principal, capturing the password
-    SP_PASSWORD=$(az ad sp create-for-rbac --skip-assignment --name $SP_NAME --query "password" --output tsv)
+    export AZURE_CLIENT_SECRET=$(az ad sp create-for-rbac --skip-assignment --name $SP_NAME --query "password" --output tsv)
 
     # Capture the service srincipal appId
-    SP_APP_ID=$(az ad sp list --display-name $SP_NAME --query "[].appId" --output tsv)
+    export AZURE_CLIENT_ID=$(az ad sp list --display-name $SP_NAME --query "[].appId" --output tsv)
 
     # Capture the Azure Tenant ID
-    TENANT_ID=$(az account show --query "tenantId" -o tsv)
+    export AZURE_TENANT_ID=$(az account show --query "tenantId" -o tsv)
     ```
 
 3. Assign key and certificate permissions to the service principal object id
 
     ```azure-cli
-    az keyvault set-policy --name $AKV_NAME --key-permissions get sign --spn $SP_APP_ID
+    az keyvault set-policy --name $AKV_NAME --key-permissions get sign --spn $AZURE_CLIENT_ID
 
-    az keyvault set-policy --name $AKV_NAME --certificate-permissions get --spn $SP_APP_ID
-    ```
-
-4. Create a credentials file for notation-akv plugin
-
-    ```bash
-    mkdir -p ~/.config/notation-akv/
-    cat <<EOF > ~/.config/notation-akv/config.json
-    {
-      "credentials": {
-        "clientId": "$SP_APP_ID",
-        "clientSecret": "$SP_PASSWORD",
-        "tenantId": "$TENANT_ID"
-      }
-    }
-    EOF
+    az keyvault set-policy --name $AKV_NAME --certificate-permissions get --spn $AZURE_CLIENT_ID
     ```
 
 ### Configure the notation Azure Key Vault plugin
@@ -310,24 +296,21 @@ Create or provide an x509 signing certificate, storing it in Azure Key Vault for
 
 ## Secure AKS with Ratify
 
-1. Capture the public key for verification
-
-    ```azure-cli
-    az keyvault certificate download \
-      -n $KEY_NAME \
-      --vault-name $AKV_NAME \
-      -f file.pem
-    
-    export PUBLIC_KEY=$(cat file.pem)
-    ```
-
 1. Create a namespace in AKS
 
     ```azurecli-interactive
     kubectl create ns demo
     ```
 
-2. Install Ratify
+2. Capture the public key for verification
+
+    ```azure-cli
+    export PUBLIC_KEY=$(az keyvault certificate show -n $KEY_NAME \
+                            --vault-name $AKV_NAME \
+                            -o json | jq -r '.cer' | base64 -d | openssl x509 -inform DER)
+    ```
+
+3. Install Ratify
 
     ```azurecli-interactive
     # Temporary, until the ratify chart is published
@@ -343,7 +326,7 @@ Create or provide an x509 signing certificate, storing it in Azure Key Vault for
     cat ./ratify/charts/ratify-gatekeeper/templates/constraint.yaml
     ```
 
-2. Deploy `hello-world:latest` to show a functioning cluster
+4. Deploy `hello-world:latest` to show a functioning cluster
 
     ```bash
     kubectl run hello-world \
@@ -351,7 +334,9 @@ Create or provide an x509 signing certificate, storing it in Azure Key Vault for
       -n demo
     ```
 
-3. List the running pods
+    > Note: due to [Ratify issue #92](https://github.com/deislabs/ratify/issues/92), this may pass validation. 
+
+5. List the running pods
 
     ```bash
     kubectl get pods -A
@@ -392,16 +377,15 @@ Create or provide an x509 signing certificate, storing it in Azure Key Vault for
 ## Demo Reset
 
 - Remove keys, certificates and notation `config.json`
+
   ```bash
-  rm ./file.pem
   rm ~/.config/notation/config.json
-  #rm ~/.config/notation-akv/config.json
   ```
 
 1. Add the Plugin
 
     ```bash
-    notation plugin add azure-kv ~/.config/notation/plugins/azure-kv/notation-akv
+    notation plugin add azure-kv ~/.config/notation/plugins/azure-kv/notation-azure-kv
     ```
 
     ```bash
@@ -420,6 +404,7 @@ Create or provide an x509 signing certificate, storing it in Azure Key Vault for
 
   ```bash
   helm uninstall ratify
+  kubectl delete secret regcred
   kubectl delete ns demo
   kubectl delete ns freezone
   ```
