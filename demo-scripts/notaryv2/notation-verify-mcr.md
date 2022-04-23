@@ -60,5 +60,5 @@ Download the notation client with plugin support.
 
     ```bash
      notation verify --cert msft_supply_chain \
-       upstream.azurecr.io/oss/hello-world/hello-world:latest-signing-prod
+       <registry>.azurecr.io/oss/hello-world/hello-world:latest-signing-prod
     ```
