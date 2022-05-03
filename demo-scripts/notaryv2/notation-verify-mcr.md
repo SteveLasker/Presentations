@@ -50,7 +50,7 @@ Download the notation client with plugin support.
 
 1. Configure Notary verification
 
-    ```console
+    ```bash
       notation cert add --name msft_supply_chain \
         --plugin cose \
         --id msft_supply_chain.pem \
