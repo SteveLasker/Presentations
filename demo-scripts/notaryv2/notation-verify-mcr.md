@@ -20,10 +20,11 @@ Download the notation client with plugin support.
     tar xvzf notation_0.0.0-SNAPSHOT-${commit}_linux_amd64.tar.gz -C ~/bin notation
     ```
 
-2. Download the `notation-cose` plugin for cose support. See [notation-cose v0.2.0-alpha.1](https://github.com/microsoft/notation-cose/releases/tag/v0.2.0-alpha.1)
+2. Download the `notation-cose` plugin for cose support. See [notation-cose v0.3.0-alpha.1](https://github.com/microsoft/notation-cose/releases/tag/v0.3.0-alpha.1)
 
     ```bash
-    curl -L https://github.com/microsoft/notation-cose/releases/download/v0.2.0-alpha.1/notation-cose_0.2.0-alpha.1_Linux_amd64.tar.gz | tar xzC ~/.config/notation/plugins/cose notation-cose
+    curl -L https://github.com/microsoft/notation-cose/releases/download/v0.3.0-alpha.1/notation-cose_0.3.0-alpha.1_Linux_amd64.tar.gz \
+    | tar xzC ~/.config/notation/plugins/cose notation-cose
     ```
 
 3. Configure notation to use the `notation-go` plug-in
@@ -60,5 +61,5 @@ Download the notation client with plugin support.
 
     ```bash
      notation verify --cert msft_supply_chain \
-       upstream.azurecr.io/oss/hello-world/hello-world:latest-signing-prod
+       mcr.microsoft.com/mcr/hello-world-oras-canary:demo
     ```
