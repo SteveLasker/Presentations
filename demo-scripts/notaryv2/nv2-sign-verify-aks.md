@@ -1,10 +1,8 @@
-Notary v2 - Remote Signing and Verification with Gatekeeper, Ratify and AKS
+# Notary v2 - Remote Signing and Verification with Gatekeeper, Ratify and AKS
 
-## Preset
+## Install the notation cli and akv plugin
 
-### Install the notation cli and akv plugin
-
-> NOTE: These are temporary steps for early development. Officially released binaries will be available as the project stabilizes.
+> NOTE: These are temporary steps for early development. Officially released binaries will be available as the latest changes are merged.
 
 1. Build a version of notation that supports extensibility
 

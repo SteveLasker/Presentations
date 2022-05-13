@@ -1,54 +1,48 @@
 # Notary v2 Quick Sign/Verify Demo
-curl -Lo oras.tar.gz https://github.com/sajayantony/oras/releases/download/v0.1.0-alpha.1.1/oras_0.1.0-alpha.1.1_linux_amd64.tar.gz
-
-curl -Lo oras.tar.gz https://github.com/sajayantony/oras/releases/download/v0.1.0-alpha.1.1/oras_0.1.0-alpha.1.1_linux_amd64.tar.gz
-
-tar xvzf oras.tar.gz -C ~/bin oras
-
-mkdir oras
-tar -xvf ./oras_0.2.0-alpha.1_linux_amd64.tar.gz -C ./oras/
-cp ./oras/oras ~/bin/oras
-
-curl -LO https://github.com/sajayantony/oras/releases/download/v0.1.0-alpha.1.1/oras_0.1.0-alpha.1.1_linux_amd64.tar.gz
- mkdir oras
- tar -xvf ./oras_0.2.0-alpha.1_linux_amd64.tar.gz -C ./oras/
- cp ./oras/oras ~/bin/oras
-
 
 ## Preset
+
 ```bash
-export PORT=5000
-export REGISTRY=localhost:${PORT}
-export REPO=${REGISTRY}/net-monitor
-export IMAGE=${REPO}:v1
+# export ACR_NAME=stevelassc
+export ACR_NAME=wabbitnetworks
+export REGISTRY=$ACR_NAME.azurecr.io
+export ACR_RG=${ACR_NAME}-acr-rg
+export REPO=net-monitor
+export TAG=v1
+export IMAGE=$REGISTRY/${REPO}:$TAG
+export REGION=southcentralus
+export LOCATION=southcentralus
 
-
-export REGISTRY=wabbitnetworks.azurecr-test.io
-export REPO=${REGISTRY}/net-monitor
-export IMAGE=${REPO}:v1
 
 # Create an ACR
 # Premium to use tokens
-az acr create -n wabbitnetworks -g wabbitnetworks-acr --sku Premium
+az group create -l $REGION -n $ACR_RG
+az acr create -n $ACR_NAME -g $ACR_NAME-acr --sku Premium
 az acr update -n wabbitnetworks --anonymous-pull-enabled true
 
 # Using ACR Auth with Tokens
-export NOTATION_USERNAME='wabbitnetworks-token'
-export NOTATION_PASSWORD=$(az acr token create -n $USER_NAME \
-                    -r wabbitnetworks \
+export USERNAME='my-token'
+export PASSWORD=$(az acr token create -n $USERNAME \
+                    -r $ACR_NAME \
                     --scope-map _repositories_admin \
                     --only-show-errors \
                     -o json | jq -r ".credentials.passwords[0].value")
-docker login $REGISTRY -u $USER_NAME -p $PASSWORD
-oras login $REGISTRY -u $NOTATION_USERNAME -p $NOTATION_PASSWORD
-
-docker run -d -p ${PORT}:5000 ghcr.io/oras-project/registry:v0.0.3-alpha
+docker login -u $USERNAME -p $PASSWORD $REGISTRY
+oras login -u $USERNAME -p $PASSWORD $REGISTRY
 
 docker build -t $IMAGE https://github.com/wabbit-networks/net-monitor.git#main
 docker push $IMAGE
 
-oras discover -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
-```
+oras discover -o tree $IMAGE
+
+# Name of the Azure Key Vault used to store the signing keys
+AKV_NAME=wabbitnetworks
+# Key name used to sign and verify
+KEY_NAME=wabbit-networks-io
+KEY_SUBJECT_NAME=wabbit-networks.io
+# Name of the AKV Resource Group
+AKV_RG=${AKV_NAME}-akv-rg
+
 
 ## Demo
 
@@ -222,3 +216,39 @@ To resetting the environment
   echo '{"insecureRegistries": ["registry.wabbit-networks.io","localhost:5000"]}' > ~/.config/notation/config.json
   ```
 
+
+
+echo 'com.microsoft.policy=sdl' > annotations.txt
+echo 'policy=sdl' > annotations.txt
+
+echo '{"$manifest": {"com.microsoft.policy": "sdl"}}' > annotations.json
+
+oras push $REGISTRY/$REPO \
+    --artifact-type 'signature/example' \
+    --subject $IMAGE \
+    --manifest-annotations annotations.txt \
+    ./signature.json:application/json
+
+
+cat <<EOF > ./claims.json
+{
+  "version": "0.0.0.0",
+  "subject": "'${IMAGE}'",
+  "com.company.policy": "level3",
+  "io.something.policy.foobar": "true"
+}
+EOF
+
+oras push $REGISTRY/$REPO \
+    --artifact-type 'application/vnd.ietf.scitt.v1' \
+    --subject $IMAGE \
+    --manifest-annotations annotations.json \
+    ./claims.json:application/json
+
+CLAIMS_DIGEST=$(oras discover -o json \
+                  --artifact-type application/vnd.ietf.scitt.v1 \
+                  $IMAGE | jq -r ".references[0].digest")
+
+az acr manifest show -r $ACR_NAME -n net-monitor@$CLAIMS_DIGEST -o jsonc
+
+oras pull -a -o ./download $REGISTRY/$REPO@$CLAIMS_DIGEST

@@ -4,7 +4,6 @@ Steps to run before a demo to reset the environment
 
 - Remove the remote signing plugin
   ```bash
-  notation plugin remove azure-kv
   kubectl delete pod --all -n not-secured
   kubectl delete pod --all -n secured
   kubectl delete ns secured

@@ -1,57 +1,50 @@
-# Notary v2 Quick Sign/Verify Demo
-curl -Lo oras.tar.gz https://github.com/sajayantony/oras/releases/download/v0.1.0-alpha.1.1/oras_0.1.0-alpha.1.1_linux_amd64.tar.gz
-
-curl -Lo oras.tar.gz https://github.com/sajayantony/oras/releases/download/v0.1.0-alpha.1.1/oras_0.1.0-alpha.1.1_linux_amd64.tar.gz
-
-tar xvzf oras.tar.gz -C ~/bin oras
-
-mkdir oras
-tar -xvf ./oras_0.2.0-alpha.1_linux_amd64.tar.gz -C ./oras/
-cp ./oras/oras ~/bin/oras
-
-curl -LO https://github.com/sajayantony/oras/releases/download/v0.1.0-alpha.1.1/oras_0.1.0-alpha.1.1_linux_amd64.tar.gz
- mkdir oras
- tar -xvf ./oras_0.2.0-alpha.1_linux_amd64.tar.gz -C ./oras/
- cp ./oras/oras ~/bin/oras
+# Notary v2 Quick Sign/Verify With ACR
 
 
 ## Preset
 ```bash
-export PORT=5000
-export REGISTRY=localhost:${PORT}
-export REPO=${REGISTRY}/net-monitor
-export IMAGE=${REPO}:v1
-
-
-export REGISTRY=wabbitnetworks.azurecr-test.io
+export ACR_NAME=wabbitnetworks
+export REGISTRY=$ACR_NAME.azurecr-test.io
 export REPO=${REGISTRY}/net-monitor
 export IMAGE=${REPO}:v1
 
 # Create an ACR
 # Premium to use tokens
-az acr create -n wabbitnetworks -g wabbitnetworks-acr --sku Premium
-az acr update -n wabbitnetworks --anonymous-pull-enabled true
+az acr create -n $ACR_NAME -g $(ACR_NAME)-acr --sku Premium
+az configure --default acr=wabbitnetworks
+az acr update --anonymous-pull-enabled true
 
 # Using ACR Auth with Tokens
 export NOTATION_USERNAME='wabbitnetworks-token'
-export NOTATION_PASSWORD=$(az acr token create -n $USER_NAME \
+export NOTATION_PASSWORD=$(az acr token create -n $NOTATION_USERNAME \
                     -r wabbitnetworks \
                     --scope-map _repositories_admin \
                     --only-show-errors \
                     -o json | jq -r ".credentials.passwords[0].value")
-docker login $REGISTRY -u $USER_NAME -p $PASSWORD
+# notation
+curl -Lo notation.tar.gz https://github.com/shizhMSFT/notation/releases/download/v0.7.0-shizh.2/notation_0.7.0-shizh.2_linux_amd64.tar.gz
+tar xvzf notation.tar.gz -C ~/bin notation
+
+# oras
+curl -Lo oras.tar.gz https://github.com/shizhMSFT/oras/releases/download/v0.11.1-shizh.1/oras_0.11.1-shizh.1_linux_amd64.tar.gz
+tar xvzf oras.tar.gz -C ~/bin oras
+
+docker login $REGISTRY -u $NOTATION_USERNAME -p $NOTATION_PASSWORD
 oras login $REGISTRY -u $NOTATION_USERNAME -p $NOTATION_PASSWORD
 
 docker run -d -p ${PORT}:5000 ghcr.io/oras-project/registry:v0.0.3-alpha
-
-docker build -t $IMAGE https://github.com/wabbit-networks/net-monitor.git#main
-docker push $IMAGE
-
-oras discover -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
 ```
 
 ## Demo
 
+- View the [Azure Portal](https://df.onecloud.azure-test.net/?Microsoft_Azure_ContainerRegistries=true#@MSFT.ccsctp.net/resource/subscriptions/f9d7ebed-adbd-4cb4-b973-aaf82c136138/resourceGroups/wabbitnetworks-acr/providers/Microsoft.ContainerRegistry/registries/wabbitnetworks/repository)
+
+- Build and push an image
+```bash
+  # Build and push to ACR
+  docker build -t $IMAGE https://github.com/wabbit-networks/net-monitor.git#main
+  docker push $IMAGE
+```
 - Generate a test certificate
     ```bash
     # Generate a test certificate
@@ -63,6 +56,7 @@ oras discover -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
     ```
 - List the signatures with notation
   ```bash
+  # List the signatures
   notation list $IMAGE
   ```
 - Verify the image, but no are yet keys are configured
@@ -72,49 +66,97 @@ oras discover -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
   ```
 - Configure a key for validation
   ```bash
+  # Add the public key, used for validation
   notation cert add --name "wabbit-networks.io" \
     ~/.config/notation/certificate/wabbit-networks.io.crt
   ```
+- View the configuration policy
+  ```bash
+  # View the configuration policy
+  cat ~/.config/notation/config.json | jq
+  ```
 - Re-verify, with a configured key
+  ```bash
+  # Validation passes, as the signed key is part of the policy
+  notation verify $IMAGE
+  ```
+- View the graph
+  ```bash
+  # View the graph of artifacts
+  oras discover -o tree -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
+  ```
+- View the tags
+  ```bash
+  # View the list of images we want to think about
+  az acr repository show-tags -n wabbitnetworks --repository net-monitor -o jsonc
+  ```  
+- List the files
+  ```bash
+  # Just like we list files, we don't see the attributes
+  ls -1
+  ```
+- List the files, w/attributes
+  ```bash
+  # Until we specifically ask for the attributes
+  ls -lr
+  ```
+- View all manifests
+  ```bash
+  # View all the artifacts in the registry
+  az acr repository show-manifests -n wabbitnetworks  --repository net-monitor -o jsonc
+  ```
+## Second Signature/Promotion
+- List the images 
+  ```bash
+  docker images
+  ```
+- Clear the images as this is our production vm
+  ```bash
+  docker rmi -f $(docker images -q)
+  ```
+- Clear the configuration policy
+  ```bash
+  rm -r ~/.config/notation/
+  ```
+- Create a test cert for the ACME Rockets Library key
+  ```bash
+  notation cert generate-test \
+    --default \
+    "acme-rockets.io-library"
+  ```
+- View the configuration
+  ```bash
+  cat ~/.config/notation/config.json | jq
+  ```
+- Attempt to validate with the ACME Rockets key
+  ```bash
+  notation verify $IMAGE
+  ```
+- Sign the image with the Production cert
+    ```bash
+    notation sign $IMAGE
+    ```
+- Configure the ACME Rockets key for validation
+  ```bash
+  notation cert add --name "acme-rockets.io-library" \
+    ~/.config/notation/certificate/acme-rockets.io-library.crt
+  ```
+- Validate with the ACME Rockets key
   ```bash
   notation verify $IMAGE
   ```
 - View the graph
   ```bash
-  oras discover -o tree $IMAGE
+  # View the graph of artifacts
+  oras discover -o tree \
+    -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
   ```
-## Sign/Validate Recording
-```bash
-asciinema rec -t "notation quick-start" -i 2 --overwrite sign-verify.cast
-sudo asciicast2gif -t tango sign-verify.cast sign-verify.gif
-docker run --rm -v $PWD:/data asciinema/asciicast2gif  sign-verify.cast sign-verify.gif
-asciicas
-```
+## Portal - View tag listings
 
-## Publish Additional Objects
-- Setup a few environment variables.  
-  ```bash
-  export PRIVATE_PORT=5050
-  export PRIVATE_REGISTRY=localhost:${PRIVATE_PORT}
-  export PRIVATE_REPO=${PRIVATE_REGISTRY}/net-monitor
-  export PRIVATE_IMAGE=${PRIVATE_REPO}:v1
-  ```
-- Run a local registry representing the ACME Rockets **private** registry
-  ```bash
-  docker run -d -p ${PRIVATE_PORT}:5000 ghcr.io/oras-project/registry:latest
-  ```
-### Start the recording
+- [dogfood portal](http://aka.ms/acr/portal/df)
+- [wabbitnetworks tag listing](https://df.onecloud.azure-test.net/?Microsoft_Azure_ContainerRegistries=true#@MSFT.ccsctp.net/resource/subscriptions/f9d7ebed-adbd-4cb4-b973-aaf82c136138/resourceGroups/wabbitnetworks-acr/providers/Microsoft.ContainerRegistry/registries/wabbitnetworks/repository)
 
-```bash
-asciinema rec -t "notation additional supply chain objects" -i 2 --overwrite additional-objects.cast
-```
 ### Generate, Sign, Push SBoMs
-
-- List the image, and any associated signatures
-  ```bash
-  # What artifacts do we currently have
-  oras discover -o tree $IMAGE
-  ```
 
 - Push an SBoM
   ```bash
@@ -123,26 +165,23 @@ asciinema rec -t "notation additional supply chain objects" -i 2 --overwrite add
   oras push $REPO \
     --artifact-type 'sbom/example' \
     --subject $IMAGE \
-    ./sbom.json:application/json -v
-  ```
-oras push $REPO:vN \
     -u $NOTATION_USERNAME -p $NOTATION_PASSWORD \
-    --manifest-config /dev/null:application/vnd.unknown.config.v1+json \
-    ./config.json:application/vnd.unknown.layer.v1+txt
-
-
+    ./sbom.json:application/json
+  ```
 - Sign the SBoM
   ```bash
   # Capture the digest, to sign it
   SBOM_DIGEST=$(oras discover -o json \
                   --artifact-type sbom/example \
+                  -u $NOTATION_USERNAME -p $NOTATION_PASSWORD \
                   $IMAGE | jq -r ".references[0].digest")
 
   notation sign $REPO@$SBOM_DIGEST
   ```
 - View the graph
   ```bash
-  oras discover -o tree $IMAGE
+  oras discover -o tree \
+    -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
   ```
 ### Generate, Sign, Push a Scan Result
 - Scan the image, saving the results
@@ -157,6 +196,7 @@ oras push $REPO:vN \
   oras push $REPO \
     --artifact-type application/vnd.org.snyk.results.v0 \
     --subject $IMAGE \
+    -u $NOTATION_USERNAME -p $NOTATION_PASSWORD \
     scan-results.json:application/json
   ```
 - Sign the scan results
@@ -164,12 +204,46 @@ oras push $REPO:vN \
   # Capture the digest, to sign the scan results
   SCAN_DIGEST=$(oras discover -o json \
                   --artifact-type application/vnd.org.snyk.results.v0 \
+                  -u $NOTATION_USERNAME -p $NOTATION_PASSWORD \
                   $IMAGE | jq -r ".references[0].digest")
 
   notation sign $REPO@$SCAN_DIGEST
 
-  oras discover -o tree $IMAGE
+  oras discover -o tree -u $NOTATION_USERNAME -p $NOTATION_PASSWORD $IMAGE
   ```
+
+
+## END DEMO
+
+
+## Sign/Validate Recording
+```bash
+asciinema rec -t "notation in Azure" -i 2 --overwrite notation-in-azure.cast
+sudo asciicast2gif -t tango notation-in-azure.cast notation-in-azure.gif
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Import the Public Image
 
@@ -213,9 +287,17 @@ docker run --rm -v $PWD:/data asciinema/asciicast2gif  additional-objects.cast a
 To resetting the environment
 
 - Remove keys, certificates and notation `config.json`
-  - `rm -r ~/.config/notation/`
-- Restart the local registry docker
-  - `docker rm -f $(docker ps -q)`
+  ```bash
+  rm -r ~/.config/notation/
+  ```
+- Clear the images as this is our production vm
+  ```bash
+  docker rmi -f $(docker images -q)
+  ```
+- Clear the ACR repo
+  ```bash
+  az acr repository delete --repository net-monitor -y
+  ```
 - Edit `~/.config/notation/config.json` to support local, insecure registries
   ```bash
   mkdir ~/.config/notation
