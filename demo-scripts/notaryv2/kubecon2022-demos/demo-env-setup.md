@@ -1,20 +1,13 @@
 # Notary v2 KubeCon 2022 EU Demo Script
 
-> TODO
-- Add an ACME Rockets Key Vault, signature and key
-- Add promotion scenario for re-signing the net-monitor key
-- Add an SBOM to the net-monitor image using the buildkit output
-- Add a SNYK scan result
-
-Questions
-  Should I run a local instance of k8s, or is demoing AKS ok for simplicity of setup?
 
 ## Demo Elements
 
 - Notary Sign/Validate with CNCF Distribution and/Zot
 - Notary Sign with Remote Key Vault Providers (Azure Key Vault)
-- Notation Verification, through policy configuration
-- Notation Verification of Microsoft Distributed Content
+- Notary Verification, through policy configuration
+- Notary Verification with k8s
+- Notary Verification of Microsoft Distributed Content
 
 ## Acquisition
 
@@ -22,21 +15,19 @@ Get the components
 
 ### Install ORAS 
 
-Install the ORAS [v0.2.1-alpha.1](https://github.com/oras-project/oras/releases/tag/v0.2.1-alpha.1) cli for pushing, discovering, pulling artifacts to a registry  
+- Install the ORAS [v0.2.1-alpha.1](https://github.com/oras-project/oras/releases/tag/v0.2.1-alpha.1) cli for pushing, discovering, pulling artifacts to a registry  
+
+- For `oras copy`, use the updated binary, but not yet complete, build from [Shiwei's branch](https://github.com/shizhMSFT/oras/releases/tag/v0.14.0-shizh.2):
 
   ```bash
-  curl -LO https://github.com/oras-project/oras/releases/download/v0.2.1-alpha.1/oras_0.2.1-alpha.1_linux_amd64.tar.gz
+  curl -Lo oras.tar.gz https://github.com/shizhMSFT/oras/releases/download/v0.14.0-shizh.2/oras_0.14.0-shizh.2_linux_amd64.tar.gz
 
-  mkdir oras
-
-  tar -xvf ./oras_0.2.1-alpha.1_linux_amd64.tar.gz -C ./oras/
-
-  cp ./oras/oras ~/bin
+  tar xvzf oras.tar.gz -C ~/bin oras
   ```
 
 ### Install `notation` with plugin support 
 
-From [notation feat-kv-extensibility branch](https://github.com/notaryproject/notation/releases/tag/feat-kv-extensibility)
+- Install notation from [notation feat-kv-extensibility branch](https://github.com/notaryproject/notation/releases/tag/feat-kv-extensibility)
 
   ```bash
   # Choose a binary
@@ -77,14 +68,6 @@ From [notation feat-kv-extensibility branch](https://github.com/notaryproject/no
   ```bash
   notation plugin ls
   ```
-
-- Install `kustomiz`  
-  https://kubectl.docs.kubernetes.io/installation/kustomize/binaries/
-
-```bash
-chmod +x ./kustomize
-cp ./kustomize ~/bin
-```
 
 ## Variables
 

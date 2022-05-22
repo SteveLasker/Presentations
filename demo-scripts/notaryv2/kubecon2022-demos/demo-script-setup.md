@@ -9,6 +9,8 @@ Steps to run before a demo to reset the environment
   kubectl delete ns secured
   kubectl delete ns not-secured
   az acr repository delete -n wabbitnetworks --repository net-monitor -y
+  az acr repository delete -n acmerockets --repository library/net-monitor -y
+  az acr repository delete -n wabbitnetworks --repository library/nginx -y
   notation cert remove wabbit-networks-test
   notation key remove wabbit-networks-test
   notation cert remove wabbit-networks-io
@@ -24,6 +26,7 @@ Steps if the environment is setup, but not run in a current session
 - Update the ACR credentials
   ```bash
   az acr login -n wabbitnetworks.azurecr.io
+  az acr login -n acmerockets.azurecr.io
   ```
 
 - Create a Service Principal for Resource Access (see [issue #20](https://github.com/Azure/notation-azure-kv/issues/20) for more simplicity)

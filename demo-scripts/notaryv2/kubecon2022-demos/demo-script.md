@@ -22,8 +22,6 @@
    1. Sign the scan result
 6. View the graph
 
-### It's Real - Today
-
 Show ZOT support
 Show ACR Support
 ACR Replication, to multiple regions
@@ -98,8 +96,15 @@ Local certs are great for testing, but lets use a secured cert, in a remote key 
 - Configure the Azure Key Vault plugin for notation
 
   ```bash
-  notation plugin add \
-      azure-kv ~/.config/notation/plugins/azure-kv/notation-azure-kv
+  notation plugin list
+  ls ~/.config/notation/plugins
+  ```
+
+- Configure the Azure Key Vault plugin for notation
+
+  ```bash
+  #notation plugin add \
+  #    azure-kv ~/.config/notation/plugins/azure-kv/notation-azure-kv
   ```
 
 - Get the KEY_ID for the remote signing service
@@ -119,26 +124,23 @@ Local certs are great for testing, but lets use a secured cert, in a remote key 
     notation key add \
         --name wabbit-networks-io \
         --id $KEY_ID \
-        --plugin azure-kv \
-        --kms
-    #notation cert add \
-    #    --name wabbit-networks-io \
-    #    --plugin azure-kv \
-    #    --id $KEY_ID \
-    #    --kms
+        --plugin azure-kv 
     ```
+
+  ```bash
+  export PUBLIC_KEY=$(az keyvault certificate show -n $ISV_KEY_NAME \
+                        --vault-name $ISV_AKV_NAME \
+                        -o json | jq -r '.cer' | base64 -d | openssl x509 -inform DER)
+  echo $PUBLIC_KEY > wabbit-networks.crt
+  notation verify --cert-file \
+    wabbit-networks.crt wabbitnetworks.azurecr.io/net-monitor:v1
+  ```
 
 - List the keys and certs to confirm
 
     ```bash
-    notation key ls
+    notation key list
     ```
-
-- List the available plugins and verify that the plug in available
-
-  ```bash
-  notation plugin ls
-  ```
 
 - Sign the image
 
@@ -147,7 +149,7 @@ Local certs are great for testing, but lets use a secured cert, in a remote key 
       wabbitnetworks.azurecr.io/net-monitor:v1 
     ```
 
-- Sign the image
+- Discover the signatures
 
     ```bash
     oras discover -o tree \
@@ -239,6 +241,7 @@ Secure k8s with Gatekeeper, Ratify and Notary v2
 
   ```bash
   docker scan nginx:1.21.6  
+  docker scan nginx:1.21.6 --json > nginx-scan
   ```
 
 - Assuming your ok with the scan results, sign it for use within your environment
@@ -249,15 +252,23 @@ Secure k8s with Gatekeeper, Ratify and Notary v2
   
   docker push wabbitnetworks.azurecr.io/library/nginx:1.21.6
 
+  oras push wabbitnetworks.azurecr.io/library/nginx \
+      --artifact-type 'application/vnd.snyk.scan.v1' \
+      --subject wabbitnetworks.azurecr.io/library/nginx:1.21.6  \
+      ./nginx-scan.json:application/json
+
   notation sign --key "wabbit-networks-io" \
       wabbitnetworks.azurecr.io/library/nginx:1.21.6
   ```
-
+- List the references
+```bash
+oras discover -o tree wabbitnetworks.azurecr.io/library/nginx:1.21.6
+```
 - Run the scanned and signed image in the secured namespace
 
   ```bash
-  kubectl run net-monitor \
-    --image=wabbitnetworks.azurecr.io/library/nginx:1.21.6
+  kubectl run nginx \
+    --image=wabbitnetworks.azurecr.io/library/nginx:1.21.6 \
     -n secured
   ```
 
@@ -266,6 +277,17 @@ Secure k8s with Gatekeeper, Ratify and Notary v2
   kubectl get pods -n not-secured
   kubectl get pods -n secured
   ```
+
+## Promote Across Registries
+
+```bash
+oras copy -r wabbitnetworks.azurecr.io/library/nginx:1.21.6 \
+  acmerockets.azurecr.io/library/nginx:1.21.6
+```
+
+```bash
+oras discover -o tree acmerockets.azurecr.io/library/nginx:1.21.6
+```
 
 ### Troubleshooting Commands
 
