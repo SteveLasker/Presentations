@@ -1,4 +1,4 @@
-# Verifying Microsoft Registry Artifacts
+# Verifying From Microsoft Artifact Registry
 
 ## Acquire Notation Clients
 
